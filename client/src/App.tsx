@@ -1,43 +1,46 @@
-import { useEffect } from 'react';
-import { GameLobby } from './components/game/GameLobby';
-import { TriviaGame } from './components/game/TriviaGame';
-import { useTriviaGame } from './lib/stores/useTriviaGame';
-import { useAudio } from './lib/stores/useAudio';
-import { Button } from './components/ui/button';
-import { Volume2, VolumeX } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { GameLobby } from "./components/game/GameLobby";
+import { TriviaGame } from "./components/game/TriviaGame";
+import { useTriviaGame } from "./lib/stores/useTriviaGame";
+import { useAudio } from "./lib/stores/useAudio";
+import { Button } from "./components/ui/button";
+import { Volume2, VolumeX } from "lucide-react";
+import { IntroScreen } from "./components/game/IntroScreen";
 
 function App() {
   const { phase } = useTriviaGame();
-  const { 
-    isMuted, 
-    toggleMute, 
-    setBackgroundMusic, 
-    setHitSound, 
-    setSuccessSound 
+  const {
+    isMuted,
+    toggleMute,
+    setBackgroundMusic,
+    setHitSound,
+    setSuccessSound,
   } = useAudio();
+
+  const [showIntro, setShowIntro] = useState(true);
 
   // Initialize audio on component mount
   useEffect(() => {
     const initializeAudio = async () => {
       try {
         // Initialize background music
-        const bgMusic = new Audio('/sounds/background.mp3');
+        const bgMusic = new Audio("/sounds/background.mp3");
         bgMusic.loop = true;
         bgMusic.volume = 0.3;
         setBackgroundMusic(bgMusic);
 
         // Initialize sound effects
-        const hitSound = new Audio('/sounds/hit.mp3');
+        const hitSound = new Audio("/sounds/hit.mp3");
         hitSound.volume = 0.5;
         setHitSound(hitSound);
 
-        const successSound = new Audio('/sounds/success.mp3');
+        const successSound = new Audio("/sounds/success.mp3");
         successSound.volume = 0.6;
         setSuccessSound(successSound);
 
-        console.log('Audio initialized successfully');
+        console.log("Audio initialized successfully");
       } catch (error) {
-        console.log('Audio initialization failed:', error);
+        console.log("Audio initialization failed:", error);
       }
     };
 
@@ -46,11 +49,11 @@ function App() {
 
   const renderCurrentPhase = () => {
     switch (phase) {
-      case 'lobby':
+      case "lobby":
         return <GameLobby />;
-      case 'playing':
+      case "playing":
         return <TriviaGame />;
-      case 'final':
+      case "final":
         return <TriviaGame />; // GameResults is rendered within TriviaGame
       default:
         return <GameLobby />;
@@ -75,8 +78,12 @@ function App() {
         </Button>
       </div>
 
-      {/* Main Game Content */}
-      {renderCurrentPhase()}
+      {/* Intro Screen or Main Game Content */}
+      {showIntro ? (
+        <IntroScreen onComplete={() => setShowIntro(false)} />
+      ) : (
+        renderCurrentPhase()
+      )}
     </div>
   );
 }
