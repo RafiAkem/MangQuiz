@@ -62,7 +62,7 @@ export function ScoreBoard() {
         </div>
 
         {/* Game Progress */}
-        <div className="mt-6 pt-6 border-t border-white/20">
+        {/* <div className="mt-6 pt-6 border-t border-white/20">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-300">Progress</span>
             <span className="text-sm text-white font-mono">
@@ -73,7 +73,7 @@ export function ScoreBoard() {
             value={((currentQuestionIndex + 1) / questions.length) * 100}
             className="h-2 bg-white/20"
           />
-        </div>
+        </div> */}
       </CardContent>
     </Card>
   );
