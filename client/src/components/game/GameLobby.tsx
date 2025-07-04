@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Play,
   Users,
@@ -22,6 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTriviaGame } from "../../lib/stores/useTriviaGame";
+import { Leaderboard } from "./Leaderboard";
+import { AuthModal } from "./AuthModal";
+import { supabase } from "@/lib/supabaseClient";
 
 export function GameLobby() {
   const {
@@ -38,6 +41,28 @@ export function GameLobby() {
   // Local state for settings, since store does not have difficulty/category directly
   const [difficulty, setDifficulty] = useState("medium");
   const [category, setCategory] = useState("all");
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  // Fetch user on mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    // Listen for auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   const handleAddPlayer = () => {
     if (newPlayerName.trim() && players.length < 4) {
@@ -56,6 +81,33 @@ export function GameLobby() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
+      {/* Auth/User Bar */}
+      <div className="absolute top-4 left-4 z-50 flex items-center space-x-4">
+        {user ? (
+          <>
+            <span className="text-white/80 text-sm">
+              Signed in as {user.email}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSignOut}
+              className="bg-white/10 text-white border-white/20"
+            >
+              Sign Out
+            </Button>
+          </>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowAuthModal(true)}
+            className="bg-white/10 text-white border-white/20"
+          >
+            Sign In
+          </Button>
+        )}
+      </div>
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
@@ -257,7 +309,7 @@ export function GameLobby() {
                 <Button
                   variant="outline"
                   className="bg-white/10 border-white/30 text-white hover:bg-white/20 backdrop-blur-sm"
-                  disabled
+                  onClick={() => setShowLeaderboard(true)}
                 >
                   <Trophy className="w-4 h-4 mr-2" />
                   Leaderboard
@@ -290,6 +342,30 @@ export function GameLobby() {
           </div>
         </div>
       </div>
+      {/* Leaderboard Modal */}
+      {showLeaderboard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-xl mx-auto">
+            <button
+              className="absolute top-2 right-2 text-white bg-black/40 rounded-full p-2 hover:bg-black/70 z-10"
+              onClick={() => setShowLeaderboard(false)}
+              aria-label="Close leaderboard"
+            >
+              <span className="text-2xl">&times;</span>
+            </button>
+            <Leaderboard />
+          </div>
+        </div>
+      )}
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          onAuth={() => {
+            supabase.auth.getUser().then(({ data }) => setUser(data.user));
+          }}
+        />
+      )}
     </div>
   );
 }

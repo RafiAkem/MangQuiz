@@ -16,12 +16,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useTriviaGame } from "../../lib/stores/useTriviaGame";
+import { supabase } from "@/lib/supabaseClient";
+import { AuthModal } from "./AuthModal";
 
 export function GameResults() {
   const { players, questions, resetGame } = useTriviaGame();
 
   const [showCelebration, setShowCelebration] = useState(false);
   const [animateStats, setAnimateStats] = useState(false);
+  const [scoreSaved, setScoreSaved] = useState<
+    null | "saved" | "guest" | "error"
+  >(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   // Calculate stats from actual game data
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
@@ -38,6 +45,51 @@ export function GameResults() {
   const gameTime = "-";
   const difficulty = "-";
   const category = questions[0]?.category || "-";
+
+  // Fetch user on mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    // Listen for auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Save winner's score to Supabase leaderboard if logged in
+  useEffect(() => {
+    async function saveScore() {
+      if (!winner) return;
+      // Check if user is logged in
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setScoreSaved("guest");
+        return;
+      }
+      // Save to leaderboard
+      const { error } = await supabase.from("leaderboard").insert([
+        {
+          user_id: user.id,
+          player_name: winner.name,
+          score: winner.score,
+          accuracy:
+            totalQuestions > 0
+              ? Math.round((winner.score / totalQuestions) * 100)
+              : null,
+        },
+      ]);
+      if (error) setScoreSaved("error");
+      else setScoreSaved("saved");
+    }
+    saveScore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [winner, user]);
 
   useEffect(() => {
     // Trigger celebration animation
@@ -185,6 +237,31 @@ export function GameResults() {
                       {winner.score.toLocaleString()} Points
                     </Badge>
                   </div>
+
+                  {/* Score save status */}
+                  {scoreSaved === "saved" && (
+                    <p className="text-green-400 mt-4">
+                      Score saved to leaderboard!
+                    </p>
+                  )}
+                  {scoreSaved === "guest" && (
+                    <div className="mt-4 flex flex-col items-center gap-2">
+                      <p className="text-yellow-300">
+                        Sign in to save your score to the leaderboard.
+                      </p>
+                      <Button
+                        className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold"
+                        onClick={() => setShowAuthModal(true)}
+                      >
+                        Sign In / Register
+                      </Button>
+                    </div>
+                  )}
+                  {scoreSaved === "error" && (
+                    <p className="text-red-400 mt-4">
+                      Failed to save score. Try again later.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -418,6 +495,20 @@ export function GameResults() {
           </div>
         </div>
       </div>
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <AuthModal
+          onClose={() => setShowAuthModal(false)}
+          onAuth={async () => {
+            // After auth, update user and re-attempt save
+            const { data } = await supabase.auth.getUser();
+            setUser(data.user);
+            setShowAuthModal(false);
+            setScoreSaved(null); // triggers useEffect to save again
+          }}
+        />
+      )}
     </div>
   );
 }
