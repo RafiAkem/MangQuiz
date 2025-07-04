@@ -25,6 +25,7 @@ import { useTriviaGame } from "../../lib/stores/useTriviaGame";
 import { Leaderboard } from "./Leaderboard";
 import { AuthModal } from "./AuthModal";
 import { supabase } from "@/lib/supabaseClient";
+import { useNavigate } from "react-router-dom";
 
 export function GameLobby() {
   const {
@@ -44,6 +45,7 @@ export function GameLobby() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
 
   // Fetch user on mount
   useEffect(() => {
@@ -299,7 +301,10 @@ export function GameLobby() {
                 size="lg"
                 disabled={players.length < 2}
                 className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 text-lg shadow-2xl transform transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                onClick={startGame}
+                onClick={() => {
+                  startGame();
+                  navigate("/game");
+                }}
               >
                 <Play className="w-6 h-6 mr-2" />
                 Start Game

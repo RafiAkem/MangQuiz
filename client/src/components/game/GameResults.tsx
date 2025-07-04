@@ -18,9 +18,11 @@ import { Progress } from "@/components/ui/progress";
 import { useTriviaGame } from "../../lib/stores/useTriviaGame";
 import { supabase } from "@/lib/supabaseClient";
 import { AuthModal } from "./AuthModal";
+import { useNavigate } from "react-router-dom";
 
 export function GameResults() {
   const { players, questions, resetGame } = useTriviaGame();
+  const navigate = useNavigate();
 
   const [showCelebration, setShowCelebration] = useState(false);
   const [animateStats, setAnimateStats] = useState(false);
@@ -476,17 +478,23 @@ export function GameResults() {
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-4 px-8 text-lg shadow-2xl transform transition-all duration-200 hover:scale-105"
-                onClick={resetGame}
+                onClick={() => {
+                  localStorage.removeItem("quizrush-localgame");
+                  resetGame();
+                  navigate("/game");
+                }}
               >
                 <RotateCcw className="w-6 h-6 mr-2" />
                 Play Again
               </Button>
-              {/* Main Menu button could be wired to navigation if needed */}
               <Button
                 size="lg"
                 variant="outline"
                 className="bg-white/10 border-white/30 text-white hover:bg-white/20 backdrop-blur-sm font-bold py-4 px-8 text-lg"
-                // onClick={...} // Add navigation if needed
+                onClick={() => {
+                  resetGame();
+                  navigate("/mode/local");
+                }}
               >
                 <Home className="w-6 h-6 mr-2" />
                 Main Menu
