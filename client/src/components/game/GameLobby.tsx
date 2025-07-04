@@ -83,8 +83,17 @@ export function GameLobby() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
-      {/* Auth/User Bar */}
+      {/* Back Button */}
       <div className="absolute top-4 left-4 z-50 flex items-center space-x-4">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => navigate("/mode")}
+          className="bg-white/10 text-white border-white/20"
+        >
+          &#8592; Back
+        </Button>
+        {/* Auth/User Bar */}
         {user ? (
           <>
             <span className="text-white/80 text-sm">

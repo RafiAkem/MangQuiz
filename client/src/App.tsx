@@ -8,11 +8,13 @@ import {
 import { useEffect } from "react";
 import { GameLobby } from "./components/game/GameLobby";
 import { TriviaGame } from "./components/game/TriviaGame";
+import { MultiplayerLobby } from "./components/game/MultiplayerLobby";
 import { useTriviaGame } from "./lib/stores/useTriviaGame";
 import { useAudio } from "./lib/stores/useAudio";
 import { Button } from "./components/ui/button";
 import { Volume2, VolumeX } from "lucide-react";
 import { IntroScreen } from "./components/game/IntroScreen";
+import { Toaster } from "./components/ui/sonner";
 
 function ModeSelect() {
   const navigate = useNavigate();
@@ -39,25 +41,6 @@ function ModeSelect() {
           <br />
           Multiplayer: Play online, login required, leaderboard enabled.
         </p>
-      </div>
-    </div>
-  );
-}
-
-function MultiplayerPlaceholder() {
-  const navigate = useNavigate();
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl p-10 flex flex-col items-center">
-        <h2 className="text-3xl font-bold text-white mb-6">
-          Online Multiplayer
-        </h2>
-        <p className="text-white/80 mb-4">
-          Coming soon! Login and play with friends online.
-        </p>
-        <Button className="mt-4" onClick={() => navigate("/mode")}>
-          Back to Mode Select
-        </Button>
       </div>
     </div>
   );
@@ -121,14 +104,16 @@ function App() {
           />
           <Route path="/mode" element={<ModeSelect />} />
           <Route path="/mode/local" element={<GameLobby />} />
-          <Route
-            path="/mode/multiplayer"
-            element={<MultiplayerPlaceholder />}
-          />
+          <Route path="/mode/multiplayer" element={<MultiplayerLobby />} />
           <Route path="/game" element={<TriviaGame />} />
+          <Route
+            path="/multiplayer-game"
+            element={<TriviaGame isMultiplayer={true} />}
+          />
           {/* You can add more routes for results, etc. */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
+        <Toaster />
       </div>
     </Router>
   );
