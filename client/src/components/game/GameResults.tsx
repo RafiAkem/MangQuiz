@@ -481,7 +481,7 @@ export function GameResults() {
                 onClick={() => {
                   localStorage.removeItem("quizrush-localgame");
                   resetGame();
-                  navigate("/game");
+                  navigate("/mode/local");
                 }}
               >
                 <RotateCcw className="w-6 h-6 mr-2" />
@@ -493,7 +493,7 @@ export function GameResults() {
                 className="bg-white/10 border-white/30 text-white hover:bg-white/20 backdrop-blur-sm font-bold py-4 px-8 text-lg"
                 onClick={() => {
                   resetGame();
-                  navigate("/mode/local");
+                  navigate("/");
                 }}
               >
                 <Home className="w-6 h-6 mr-2" />
