@@ -16,7 +16,14 @@ interface Player {
 // Add game state to GameRoom
 type GamePhase = "waiting" | "starting" | "playing" | "final" | "reveal";
 interface GameState {
-  questions: { question: string; options: string[]; answer: string }[];
+  questions: {
+    question: string;
+    options: string[];
+    answer: string;
+    explanation?: string;
+    category?: string;
+    difficulty?: string;
+  }[];
   questionIndex: number;
   answers: Record<string, string>; // playerId -> answer
   scores: Record<string, number>;
@@ -459,6 +466,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           question: q.question,
           options: q.options,
           answer: q.correctAnswer || q.answer,
+          explanation: q.explanation,
+          category: q.category,
+          difficulty: q.difficulty,
         }));
       } else {
         ws.send(

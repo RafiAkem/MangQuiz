@@ -375,23 +375,42 @@ export function MultiplayerTriviaGame({
                     </div>
                   </div>
                 )}
-
-                {isRevealPhase && (
-                  <div className="mt-6 p-4 bg-purple-500/20 border border-purple-400/30 rounded-lg">
-                    <div className="flex items-center space-x-2 text-purple-200">
-                      <Eye className="w-4 h-4" />
-                      <span>Answer revealed! Moving to next question...</span>
-                    </div>
-                    <div className="mt-2 text-sm text-purple-100">
-                      The correct answer was:{" "}
-                      <strong className="text-green-400">
-                        {correctAnswer}
-                      </strong>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
+
+            {/* Explanation and Controls - Show in reveal phase */}
+            {isRevealPhase && (
+              <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
+                <CardContent className="p-8">
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 text-white">
+                      <CheckCircle className="h-6 w-6 text-green-400 flex-shrink-0" />
+                      <span className="font-semibold text-lg">
+                        Correct Answer:
+                      </span>
+                      <span className="text-green-300 font-medium">
+                        {currentQ.answer}
+                      </span>
+                    </div>
+
+                    {currentQ.explanation && (
+                      <div className="bg-blue-500/10 border border-blue-400/30 p-6 rounded-lg">
+                        <p className="text-blue-100 leading-relaxed">
+                          {currentQ.explanation}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="text-center">
+                      <div className="text-purple-200 text-sm">
+                        Next question in {mpState.revealTimeRemaining ?? 0}{" "}
+                        seconds...
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}
