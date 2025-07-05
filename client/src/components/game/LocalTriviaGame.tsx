@@ -5,9 +5,7 @@ import { GameResults } from "./GameResults";
 import { useTriviaGame } from "../../lib/stores/useTriviaGame";
 import { useAudio } from "../../lib/stores/useAudio";
 
-// Legacy component - now redirects to LocalTriviaGame
-// This component is kept for backward compatibility
-export function TriviaGame() {
+export function LocalTriviaGame() {
   const { phase } = useTriviaGame();
   const { playSuccess } = useAudio();
 

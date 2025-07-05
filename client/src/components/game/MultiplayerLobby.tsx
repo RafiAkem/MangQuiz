@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -35,6 +35,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { useWebSocket } from "../../lib/contexts/WebSocketContext";
 
 interface Player {
   id: string;
@@ -67,14 +68,13 @@ interface ChatMessage {
 
 export function MultiplayerLobby() {
   const navigate = useNavigate();
-  const wsRef = useRef<WebSocket | null>(null);
+  const { wsRef, isConnected } = useWebSocket();
 
   // State
   const [rooms, setRooms] = useState<Room[]>([]);
   const [currentRoom, setCurrentRoom] = useState<any>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
   const [isHost, setIsHost] = useState(false);
   const [allPlayersReady, setAllPlayersReady] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -98,45 +98,33 @@ export function MultiplayerLobby() {
     questionCount: 10,
   });
 
-  // Initialize WebSocket connection
+  // Initialize WebSocket message handler
   useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws/multiplayer`;
+    if (!wsRef.current) return;
 
-    wsRef.current = new WebSocket(wsUrl);
-
-    wsRef.current.onopen = () => {
-      setIsConnected(true);
-      fetchRooms();
-    };
-
-    wsRef.current.onmessage = (event) => {
+    const handleMessage = (event: MessageEvent) => {
       const data = JSON.parse(event.data);
       handleWebSocketMessage(data);
     };
 
-    wsRef.current.onclose = () => {
-      setIsConnected(false);
-      setCurrentRoom(null);
-      setPlayers([]);
-      setCurrentPlayer(null);
-    };
+    wsRef.current.addEventListener("message", handleMessage);
 
-    wsRef.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      toast.error("Failed to connect to server");
-    };
+    // Fetch rooms when connected
+    if (isConnected) {
+      fetchRooms();
+    }
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      wsRef.current?.removeEventListener("message", handleMessage);
     };
-  }, []);
+  }, [isConnected, wsRef]);
 
   const handleWebSocketMessage = (data: any) => {
+    console.log("WebSocket message received:", data);
+
     switch (data.type) {
       case "room_joined":
+        console.log("Room joined:", data);
         setCurrentRoom(data.room);
         setPlayers(data.players);
         const myPlayer = data.players.find(
@@ -148,12 +136,14 @@ export function MultiplayerLobby() {
         break;
 
       case "player_joined":
+        console.log("Player joined:", data);
         setPlayers((prev) => [...prev, data.player]);
         setCurrentRoom(data.room);
         toast.info(`${data.player.name} joined the room`);
         break;
 
       case "player_left":
+        console.log("Player left:", data);
         setPlayers((prev) => prev.filter((p) => p.id !== data.playerId));
         setCurrentRoom(data.room);
         if (data.newHostId === currentPlayer?.id) {
@@ -163,6 +153,7 @@ export function MultiplayerLobby() {
         break;
 
       case "player_ready_changed":
+        console.log("Player ready changed:", data);
         setPlayers((prev) =>
           prev.map((p) =>
             p.id === data.playerId ? { ...p, isReady: data.isReady } : p
@@ -171,6 +162,7 @@ export function MultiplayerLobby() {
         break;
 
       case "all_players_ready":
+        console.log("All players ready:", data);
         setAllPlayersReady(data.canStart);
         if (data.canStart && isHost) {
           toast.success("All players are ready! You can now start the game.");
@@ -178,33 +170,56 @@ export function MultiplayerLobby() {
         break;
 
       case "game_starting":
+        console.log("Game starting:", data);
         setCountdown(data.countdown);
         toast.info(`Game will start in ${data.countdown} seconds`);
         break;
 
       case "countdown":
+        console.log("Countdown:", data);
         setCountdown(data.countdown);
         break;
 
       case "game_started":
+        console.log("Game started:", data);
+        console.log("Current player before navigation:", currentPlayer);
+        console.log("Players data:", data.players);
         setCountdown(null);
+
+        // Make sure we have the current player
+        if (!currentPlayer) {
+          console.error("No current player found!");
+          const myPlayer = data.players.find(
+            (p: Player) => p.name === playerName
+          );
+          console.log("Found player by name:", myPlayer);
+          if (myPlayer) {
+            setCurrentPlayer(myPlayer);
+          }
+        }
+
         // Navigate to game with multiplayer settings
+        const navigationState = {
+          isMultiplayer: true,
+          settings: data.settings,
+          players: data.players,
+          roomId: currentRoom?.id,
+          playerId: currentPlayer?.id,
+        };
+        console.log("Navigation state:", navigationState);
+
         navigate("/multiplayer-game", {
-          state: {
-            isMultiplayer: true,
-            settings: data.settings,
-            players: players,
-            roomId: currentRoom?.id,
-            playerId: currentPlayer?.id,
-          },
+          state: navigationState,
         });
         break;
 
       case "chat_message":
+        console.log("Chat message:", data);
         setChatMessages((prev) => [...prev, data]);
         break;
 
       case "settings_updated":
+        console.log("Settings updated:", data);
         setCurrentRoom((prev: any) =>
           prev ? { ...prev, settings: data.settings } : null
         );
@@ -212,7 +227,12 @@ export function MultiplayerLobby() {
         break;
 
       case "error":
+        console.log("Error:", data);
         toast.error(data.message);
+        break;
+
+      default:
+        console.log("Unknown message type:", data.type);
         break;
     }
   };
@@ -232,6 +252,9 @@ export function MultiplayerLobby() {
       toast.error("Please fill in all required fields");
       return;
     }
+
+    // Store player name in localStorage for the game component to use
+    localStorage.setItem("quizRushPlayerName", playerName);
 
     setIsLoading(true);
     try {
@@ -288,6 +311,9 @@ export function MultiplayerLobby() {
       return;
     }
 
+    // Store player name in localStorage for the game component to use
+    localStorage.setItem("quizRushPlayerName", playerName);
+
     wsRef.current?.send(
       JSON.stringify({
         type: "join_room",
@@ -329,8 +355,19 @@ export function MultiplayerLobby() {
   };
 
   const startGame = () => {
-    if (!isHost) return;
+    console.log("Start game button clicked");
+    console.log("Is host:", isHost);
+    console.log("All players ready:", allPlayersReady);
+    console.log("Players count:", players.length);
+    console.log("WebSocket connected:", isConnected);
+    console.log("WebSocket ref:", wsRef.current);
 
+    if (!isHost) {
+      console.log("Not host, cannot start game");
+      return;
+    }
+
+    console.log("Sending start_game message");
     wsRef.current?.send(
       JSON.stringify({
         type: "start_game",

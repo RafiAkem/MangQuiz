@@ -14,7 +14,7 @@ interface Player {
 }
 
 // Add game state to GameRoom
-type GamePhase = "waiting" | "starting" | "playing" | "final";
+type GamePhase = "waiting" | "starting" | "playing" | "final" | "reveal";
 interface GameState {
   questions: { question: string; options: string[]; answer: string }[];
   questionIndex: number;
@@ -41,8 +41,20 @@ interface GameRoom {
   gameState?: GameState;
 }
 
+// Add timer fields to GameRoom
+type GameRoomWithTimers = GameRoom & {
+  questionTimer?: NodeJS.Timeout;
+  revealTimer?: NodeJS.Timeout;
+  timeLeft?: number;
+  revealTimeLeft?: number;
+};
+
+// Helper to get timer duration (could be from settings)
+const QUESTION_TIME = 20; // seconds
+const REVEAL_TIME = 2; // seconds
+
 // In-memory storage for rooms (in production, use Redis or database)
-const rooms = new Map<string, GameRoom>();
+const rooms = new Map<string, GameRoomWithTimers>();
 const playerToRoom = new Map<string, string>();
 
 // Simple static question generator (replace with LLM later)
@@ -126,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const roomId = uuidv4();
     const hostId = uuidv4();
 
-    const room: GameRoom = {
+    const room: GameRoomWithTimers = {
       id: roomId,
       name,
       hostId,
@@ -188,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on("connection", (ws) => {
     console.log("Multiplayer WebSocket client connected");
     let currentPlayer: Player | null = null;
-    let currentRoom: GameRoom | null = null;
+    let currentRoom: GameRoomWithTimers | null = null;
 
     ws.on("message", (message) => {
       try {
@@ -236,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ws: any,
       data: any,
       player: Player | null,
-      room: GameRoom | null
+      room: GameRoomWithTimers | null
     ) {
       const { roomId, playerName, password } = data;
       const targetRoom = rooms.get(roomId);
@@ -259,6 +271,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (targetRoom.status !== "waiting") {
+        // Check if player is already in the room (by name)
+        const existingPlayer = targetRoom.players.find(
+          (p) => p.name === playerName
+        );
+        if (existingPlayer) {
+          // Update their ws reference
+          existingPlayer.ws = ws;
+          currentPlayer = existingPlayer;
+          currentRoom = targetRoom;
+          playerToRoom.set(existingPlayer.id, roomId);
+
+          // Send them the current room info
+          ws.send(
+            JSON.stringify({
+              type: "room_joined",
+              room: {
+                id: targetRoom.id,
+                name: targetRoom.name,
+                playerCount: targetRoom.players.length,
+                maxPlayers: targetRoom.maxPlayers,
+                settings: targetRoom.settings,
+              },
+              players: targetRoom.players.map((p) => ({
+                id: p.id,
+                name: p.name,
+                isHost: p.isHost,
+                isReady: p.isReady,
+                score: p.score,
+              })),
+            })
+          );
+          // Also send the current game state
+          ws.send(
+            JSON.stringify({
+              type: "game_state",
+              state: targetRoom.gameState,
+            })
+          );
+          return;
+        }
         ws.send(
           JSON.stringify({ type: "error", message: "Game already in progress" })
         );
@@ -330,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     function handleLeaveRoom(
       ws: any,
       player: Player | null,
-      room: GameRoom | null
+      room: GameRoomWithTimers | null
     ) {
       if (!player || !room) return;
 
@@ -347,6 +399,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // If room is empty, delete it
         if (room.players.length === 0) {
+          clearQuestionTimer(room);
+          clearRevealTimer(room);
           rooms.delete(room.id);
         } else {
           // Notify remaining players
@@ -373,7 +427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ws: any,
       data: any,
       player: Player | null,
-      room: GameRoom | null
+      room: GameRoomWithTimers | null
     ) {
       if (!player || !room) return;
 
@@ -399,10 +453,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     function handleStartGame(
       ws: any,
       player: Player | null,
-      room: GameRoom | null
+      room: GameRoomWithTimers | null
     ) {
-      if (!player || !room) return;
+      console.log("handleStartGame called");
+      console.log("Player:", player);
+      console.log("Room:", room);
+
+      if (!player || !room) {
+        console.log("No player or room");
+        return;
+      }
       if (!player.isHost) {
+        console.log("Player is not host");
         ws.send(
           JSON.stringify({
             type: "error",
@@ -412,6 +474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       if (room.players.length < 2) {
+        console.log("Not enough players:", room.players.length);
         ws.send(
           JSON.stringify({
             type: "error",
@@ -421,6 +484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       if (!room.players.every((p) => p.isReady)) {
+        console.log("Not all players ready");
         ws.send(
           JSON.stringify({
             type: "error",
@@ -429,9 +493,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         return;
       }
+
+      console.log("Starting game...");
       room.status = "playing";
+
       // Generate questions
       const questions = generateQuestions(room.settings.questionCount);
+
       // Initialize game state
       room.gameState = {
         questions,
@@ -440,14 +508,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         scores: Object.fromEntries(room.players.map((p) => [p.id, 0])),
         phase: "playing",
       };
+
+      console.log("Sending game_started message");
+      // Send game_started message to all players
+      broadcastToRoom(room, {
+        type: "game_started",
+        settings: room.settings,
+        players: room.players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          isHost: p.isHost,
+          isReady: p.isReady,
+          score: p.score,
+        })),
+      });
+
+      // Also broadcast the initial game state
       broadcastGameState(room);
+      startQuestionTimer(room);
     }
 
     function handleChatMessage(
       ws: any,
       data: any,
       player: Player | null,
-      room: GameRoom | null
+      room: GameRoomWithTimers | null
     ) {
       if (!player || !room) return;
 
@@ -464,7 +549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ws: any,
       data: any,
       player: Player | null,
-      room: GameRoom | null
+      room: GameRoomWithTimers | null
     ) {
       if (!player || !room) return;
 
@@ -500,22 +585,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ws: any,
       data: any,
       player: Player | null,
-      room: GameRoom | null
+      room: GameRoomWithTimers | null
     ) {
-      if (!player || !room || !room.gameState) return;
+      console.log("handlePlayerAnswer called with:", data);
+      console.log("Player:", player);
+      console.log("Room:", room);
+
+      if (!player || !room || !room.gameState) {
+        console.log("Missing player, room, or gameState");
+        return;
+      }
+
       const { answer, playerId } = data;
-      // Only accept answer if not already answered
-      if (room.gameState.answers[playerId]) return;
+      console.log("Answer:", answer, "PlayerId:", playerId);
+
+      if (room.gameState.answers[playerId]) {
+        console.log("Player already answered");
+        return;
+      }
+
+      console.log("Recording answer for player:", playerId);
       room.gameState.answers[playerId] = answer;
-      // If all players have answered, score and move to next question
-      if (Object.keys(room.gameState.answers).length === room.players.length) {
-        scoreAndNext(room);
+
+      const totalAnswers = Object.keys(room.gameState.answers).length;
+      const totalPlayers = room.players.length;
+      console.log(`Answers: ${totalAnswers}/${totalPlayers}`);
+
+      // If all players have answered, reveal and score
+      if (totalAnswers === totalPlayers) {
+        console.log("All players answered, revealing answer");
+        clearQuestionTimer(room);
+        revealAndScore(room);
       } else {
+        console.log("Broadcasting updated game state");
         broadcastGameState(room);
       }
     }
 
-    function scoreAndNext(room: GameRoom) {
+    function scoreAndNext(room: GameRoomWithTimers) {
       const gs = room.gameState!;
       const currentQ = gs.questions[gs.questionIndex];
       // Score answers
@@ -536,15 +643,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
 
-    function broadcastGameState(room: GameRoom) {
+    function broadcastGameState(room: GameRoomWithTimers) {
+      const state = {
+        ...room.gameState,
+        questionTimeRemaining: room.timeLeft,
+        revealTimeRemaining: room.revealTimeLeft,
+      };
+      console.log("Broadcasting game state:", state);
       broadcastToRoom(room, {
         type: "game_state",
-        state: room.gameState,
+        state,
       });
+    }
+
+    // Helper to start a question timer
+    function startQuestionTimer(room: GameRoomWithTimers) {
+      console.log("Starting question timer for room:", room.id);
+      clearQuestionTimer(room);
+      room.timeLeft = QUESTION_TIME;
+      console.log("Initial time left:", room.timeLeft);
+
+      room.questionTimer = setInterval(() => {
+        room.timeLeft!--;
+        console.log(`Timer tick: ${room.timeLeft}s remaining`);
+
+        // Broadcast time left every second
+        broadcastGameState(room);
+
+        if (room.timeLeft! <= 0) {
+          console.log("Timer expired, revealing answer");
+          clearQuestionTimer(room);
+          revealAndScore(room);
+        }
+      }, 1000);
+    }
+
+    function clearQuestionTimer(room: GameRoomWithTimers) {
+      if (room.questionTimer) {
+        console.log("Clearing question timer");
+        clearInterval(room.questionTimer);
+        room.questionTimer = undefined;
+      }
+    }
+
+    function startRevealTimer(room: GameRoomWithTimers) {
+      console.log("Starting reveal timer for room:", room.id);
+      clearRevealTimer(room);
+      room.revealTimeLeft = REVEAL_TIME;
+
+      room.revealTimer = setTimeout(() => {
+        console.log("Reveal timer expired, moving to next question");
+        clearRevealTimer(room);
+        nextQuestionOrEnd(room);
+      }, REVEAL_TIME * 1000);
+    }
+
+    function clearRevealTimer(room: GameRoomWithTimers) {
+      if (room.revealTimer) {
+        console.log("Clearing reveal timer");
+        clearTimeout(room.revealTimer);
+        room.revealTimer = undefined;
+      }
+    }
+
+    function revealAndScore(room: GameRoomWithTimers) {
+      console.log("Revealing and scoring answers");
+      // Score answers
+      const gs = room.gameState!;
+      const currentQ = gs.questions[gs.questionIndex];
+      for (const pid in gs.answers) {
+        if (gs.answers[pid] === currentQ.answer) {
+          gs.scores[pid] = (gs.scores[pid] || 0) + 1;
+          console.log(
+            `Player ${pid} got correct answer, new score: ${gs.scores[pid]}`
+          );
+        }
+      }
+      // Set phase to 'reveal' for UI
+      gs.phase = "reveal";
+      console.log("Setting phase to reveal");
+      broadcastGameState(room);
+      startRevealTimer(room);
+    }
+
+    function nextQuestionOrEnd(room: GameRoomWithTimers) {
+      const gs = room.gameState!;
+      if (gs.questionIndex + 1 < gs.questions.length) {
+        console.log("Moving to next question");
+        gs.questionIndex++;
+        gs.answers = {};
+        gs.phase = "playing";
+        broadcastGameState(room);
+        startQuestionTimer(room);
+      } else {
+        console.log("Game finished");
+        gs.phase = "final";
+        broadcastGameState(room);
+        broadcastToRoom(room, { type: "game_end" });
+      }
     }
   });
 
-  function broadcastToRoom(room: GameRoom, message: any) {
+  function broadcastToRoom(room: GameRoomWithTimers, message: any) {
     room.players.forEach((player) => {
       if (player.ws.readyState === 1) {
         // WebSocket.OPEN
