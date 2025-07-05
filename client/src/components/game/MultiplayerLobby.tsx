@@ -127,11 +127,17 @@ export function MultiplayerLobby() {
         console.log("Room joined:", data);
         setCurrentRoom(data.room);
         setPlayers(data.players);
-        const myPlayer = data.players.find(
-          (p: Player) => p.name === playerName
+        setCurrentPlayer(
+          data.players.find((p: Player) => p.id === data.playerId) || null
         );
-        setCurrentPlayer(myPlayer || data.players[0]);
-        setIsHost((myPlayer || data.players[0])?.isHost || false);
+        setIsHost(
+          data.players.find((p: Player) => p.id === data.playerId)?.isHost ||
+            false
+        );
+        // Store the unique playerId in localStorage for robust identification
+        if (data.playerId) {
+          localStorage.setItem("quizRushPlayerId", data.playerId);
+        }
         toast.success(`Successfully joined ${data.room.name}`);
         break;
 
@@ -204,7 +210,7 @@ export function MultiplayerLobby() {
           settings: data.settings,
           players: data.players,
           roomId: currentRoom?.id,
-          playerId: currentPlayer?.id,
+          playerId: localStorage.getItem("quizRushPlayerId"),
         };
         console.log("Navigation state:", navigationState);
 

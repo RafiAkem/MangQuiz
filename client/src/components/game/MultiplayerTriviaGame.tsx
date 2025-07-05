@@ -41,80 +41,24 @@ export function MultiplayerTriviaGame({
     console.log("location.state:", window.history.state?.usr);
   }, [playerId, players]);
 
-  // Fallback: Try to resolve playerId from various sources
+  // Always use playerId from localStorage for robust identification
   useEffect(() => {
-    if (resolvedPlayerId) return; // Already resolved
+    const storedPlayerId = localStorage.getItem("quizRushPlayerId");
+    console.log("=== PlayerId Resolution ===");
+    console.log("playerId prop:", playerId);
+    console.log("storedPlayerId from localStorage:", storedPlayerId);
+    console.log("resolvedPlayerId state:", resolvedPlayerId);
 
-    console.log("Trying to resolve playerId...");
-
-    // Method 1: From prop
-    if (playerId) {
-      console.log("Using playerId from prop:", playerId);
+    if (storedPlayerId) {
+      setResolvedPlayerId(storedPlayerId);
+      console.log("Using playerId from localStorage:", storedPlayerId);
+    } else if (playerId) {
       setResolvedPlayerId(playerId);
-      return;
+      console.log("Using playerId from prop:", playerId);
+    } else {
+      console.error("No playerId found in localStorage or props!");
     }
-
-    // Method 2: From location state
-    const locationState = window.history.state?.usr;
-    if (locationState?.playerId) {
-      console.log(
-        "Using playerId from location state:",
-        locationState.playerId
-      );
-      setResolvedPlayerId(locationState.playerId);
-      return;
-    }
-
-    // Method 3: From players list (if only one player, it's probably the current user)
-    if (players && players.length === 1) {
-      console.log("Using playerId from single player:", players[0].id);
-      setResolvedPlayerId(players[0].id);
-      return;
-    }
-
-    // Method 4: Try to get from WebSocket connection (if we have connection info)
-    if (wsRef?.current) {
-      console.log("WebSocket connected, but no playerId found");
-      // We'll need to wait for a message that contains player info
-    }
-
-    console.log("Could not resolve playerId from any source");
-  }, [playerId, players, resolvedPlayerId, wsRef]);
-
-  // Alternative approach: Get playerId from the first player in the list
-  // This assumes the current user is the first player (which is usually the case)
-  useEffect(() => {
-    if (resolvedPlayerId) return;
-
-    if (players && players.length > 0) {
-      console.log("Using first player as current player:", players[0]);
-      setResolvedPlayerId(players[0].id);
-    }
-  }, [players, resolvedPlayerId]);
-
-  // Better approach: Find current player by name from localStorage or sessionStorage
-  useEffect(() => {
-    if (resolvedPlayerId) return;
-
-    if (players && players.length > 0) {
-      // Try to get player name from localStorage (set when joining room)
-      const playerName = localStorage.getItem("quizRushPlayerName");
-      console.log("Player name from localStorage:", playerName);
-
-      if (playerName) {
-        const currentPlayer = players.find((p) => p.name === playerName);
-        if (currentPlayer) {
-          console.log("Found current player by name:", currentPlayer);
-          setResolvedPlayerId(currentPlayer.id);
-          return;
-        }
-      }
-
-      // Fallback: use first player
-      console.log("Using first player as current player:", players[0]);
-      setResolvedPlayerId(players[0].id);
-    }
-  }, [players, resolvedPlayerId]);
+  }, [playerId]);
 
   // Listen for multiplayer game state updates
   useEffect(() => {
@@ -154,11 +98,16 @@ export function MultiplayerTriviaGame({
     console.log("playerId prop:", playerId);
     console.log("resolvedPlayerId:", resolvedPlayerId);
     console.log(
+      "localStorage playerId:",
+      localStorage.getItem("quizRushPlayerId")
+    );
+    console.log(
       "hasAnswered:",
       resolvedPlayerId ? !!mpState.answers?.[resolvedPlayerId] : false
     );
     console.log("Current phase:", mpState?.phase);
     console.log("Is playing phase:", mpState?.phase === "playing");
+    console.log("Current answers:", mpState?.answers);
 
     if (!wsRef?.current) {
       console.error("WebSocket not connected");
@@ -288,25 +237,27 @@ export function MultiplayerTriviaGame({
                         Time Left
                       </span>
                       <span className="text-white font-mono text-lg font-bold">
-                        {mpState.questionTimeRemaining}s
+                        {mpState.questionTimeRemaining ?? 0}s
                       </span>
                     </div>
                     <div className="relative w-full">
                       <Progress
-                        value={(mpState.questionTimeRemaining / 20) * 100}
+                        value={
+                          ((mpState.questionTimeRemaining ?? 0) / 20) * 100
+                        }
                         className="h-3 bg-white/20"
                       />
                       <div
                         className={`h-3 rounded-full absolute top-0 left-0 transition-all duration-1000 ${
-                          mpState.questionTimeRemaining <= 5
+                          (mpState.questionTimeRemaining ?? 0) <= 5
                             ? "bg-red-500"
-                            : mpState.questionTimeRemaining <= 10
+                            : (mpState.questionTimeRemaining ?? 0) <= 10
                             ? "bg-yellow-500"
                             : "bg-green-500"
                         }`}
                         style={{
                           width: `${
-                            (mpState.questionTimeRemaining / 20) * 100
+                            ((mpState.questionTimeRemaining ?? 0) / 20) * 100
                           }%`,
                         }}
                       ></div>
@@ -322,18 +273,20 @@ export function MultiplayerTriviaGame({
                       Next Question
                     </span>
                     <span className="text-white font-mono text-lg font-bold">
-                      {mpState.revealTimeRemaining}s
+                      {mpState.revealTimeRemaining ?? 0}s
                     </span>
                   </div>
                   <div className="relative w-full">
                     <Progress
-                      value={(mpState.revealTimeRemaining / 2) * 100}
+                      value={((mpState.revealTimeRemaining ?? 0) / 2) * 100}
                       className="h-3 bg-white/20"
                     />
                     <div
                       className="h-3 rounded-full absolute top-0 left-0 transition-all duration-1000 bg-purple-500"
                       style={{
-                        width: `${(mpState.revealTimeRemaining / 2) * 100}%`,
+                        width: `${
+                          ((mpState.revealTimeRemaining ?? 0) / 2) * 100
+                        }%`,
                       }}
                     ></div>
                   </div>
@@ -390,10 +343,6 @@ export function MultiplayerTriviaGame({
                       resolvedPlayerId &&
                       mpState.answers?.[resolvedPlayerId] === option;
                     const isCorrect = option === correctAnswer;
-                    const playersWhoSelected =
-                      players?.filter(
-                        (p: any) => mpState.answers?.[p.id] === option
-                      ) || [];
 
                     // Determine styling based on phase and correctness
                     let cardStyle = "";
@@ -457,25 +406,6 @@ export function MultiplayerTriviaGame({
                                 )}
                               </div>
                             </div>
-
-                            {/* Player Selection Indicators */}
-                            {playersWhoSelected.length > 0 && (
-                              <div className="flex flex-wrap gap-2">
-                                {playersWhoSelected.map((player: any) => (
-                                  <Badge
-                                    key={player.id}
-                                    variant="secondary"
-                                    className="text-xs bg-blue-600 text-white"
-                                    style={{
-                                      backgroundColor:
-                                        player.color || "#3b82f6",
-                                    }}
-                                  >
-                                    {player.name}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
                           </CardContent>
                         </Card>
                       </div>
