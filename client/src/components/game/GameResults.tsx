@@ -16,8 +16,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useTriviaGame } from "../../lib/stores/useTriviaGame";
-import { supabase } from "@/lib/supabaseClient";
-import { AuthModal } from "./AuthModal";
 import { useNavigate } from "react-router-dom";
 
 export function GameResults() {
@@ -26,11 +24,6 @@ export function GameResults() {
 
   const [showCelebration, setShowCelebration] = useState(false);
   const [animateStats, setAnimateStats] = useState(false);
-  const [scoreSaved, setScoreSaved] = useState<
-    null | "saved" | "guest" | "error"
-  >(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [user, setUser] = useState<any>(null);
 
   // Calculate stats from actual game data
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
@@ -47,51 +40,6 @@ export function GameResults() {
   const gameTime = "-";
   const difficulty = "-";
   const category = questions[0]?.category || "-";
-
-  // Fetch user on mount
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-    // Listen for auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
-    return () => {
-      listener?.subscription.unsubscribe();
-    };
-  }, []);
-
-  // Save winner's score to Supabase leaderboard if logged in
-  useEffect(() => {
-    async function saveScore() {
-      if (!winner) return;
-      // Check if user is logged in
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setScoreSaved("guest");
-        return;
-      }
-      // Save to leaderboard
-      const { error } = await supabase.from("leaderboard").insert([
-        {
-          user_id: user.id,
-          player_name: winner.name,
-          score: winner.score,
-          accuracy:
-            totalQuestions > 0
-              ? Math.round((winner.score / totalQuestions) * 100)
-              : null,
-        },
-      ]);
-      if (error) setScoreSaved("error");
-      else setScoreSaved("saved");
-    }
-    saveScore();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [winner, user]);
 
   useEffect(() => {
     // Trigger celebration animation
@@ -239,231 +187,128 @@ export function GameResults() {
                       {winner.score.toLocaleString()} Points
                     </Badge>
                   </div>
-
-                  {/* Score save status */}
-                  {scoreSaved === "saved" && (
-                    <p className="text-green-400 mt-4">
-                      Score saved to leaderboard!
-                    </p>
-                  )}
-                  {scoreSaved === "guest" && (
-                    <div className="mt-4 flex flex-col items-center gap-2">
-                      <p className="text-yellow-300">
-                        Sign in to save your score to the leaderboard.
-                      </p>
-                      <Button
-                        className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold"
-                        onClick={() => setShowAuthModal(true)}
-                      >
-                        Sign In / Register
-                      </Button>
-                    </div>
-                  )}
-                  {scoreSaved === "error" && (
-                    <p className="text-red-400 mt-4">
-                      Failed to save score. Try again later.
-                    </p>
-                  )}
                 </CardContent>
               </Card>
             </div>
           )}
 
-          <div className="grid lg:grid-cols-2 gap-8">
-            {/* Final Standings */}
-            <div
-              className={`transition-all duration-1000 delay-500 ${
-                animateStats
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-8"
-              }`}
-            >
-              <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
-                <CardContent className="p-6">
-                  <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
-                    <Users className="w-6 h-6 mr-3 text-blue-400" />
-                    Final Standings
-                  </h3>
-
-                  <div className="space-y-4">
-                    {sortedPlayers.map((player, index) => {
-                      const stats = getPlayerStats(player);
-                      return (
-                        <div
-                          key={player.id}
-                          className={`p-4 rounded-lg transition-all duration-500 ${
-                            index === 0
-                              ? "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 transform scale-105"
-                              : "bg-white/5 border border-white/10"
-                          }`}
-                          style={{ animationDelay: `${index * 200}ms` }}
-                        >
-                          <div className="flex items-center justify-between">
+          {/* Player Rankings */}
+          <div
+            className={`transition-all duration-1000 delay-500 ${
+              animateStats
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-8"
+            }`}
+          >
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
+              <CardContent className="p-8">
+                <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
+                  <Users className="w-6 h-6 mr-2 text-blue-400" />
+                  Final Rankings
+                </h3>
+                <div className="space-y-4">
+                  {sortedPlayers.map((player, index) => {
+                    const stats = getPlayerStats(player);
+                    return (
+                      <div
+                        key={player.id}
+                        className={`p-4 rounded-lg transition-all duration-300 ${
+                          index === 0
+                            ? "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-400/30"
+                            : index === 1
+                            ? "bg-gradient-to-r from-gray-500/20 to-gray-600/20 border border-gray-400/30"
+                            : index === 2
+                            ? "bg-gradient-to-r from-orange-600/20 to-red-600/20 border border-orange-400/30"
+                            : "bg-white/5 border border-white/10"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            {getRankIcon(index)}
+                            <div>
+                              <h4 className="font-semibold text-white text-lg">
+                                {player.name}
+                              </h4>
+                              <p className="text-sm text-gray-300">
+                                {getRankBadge(index)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
                             <div className="flex items-center space-x-4">
-                              {getRankIcon(index)}
-                              <div className="flex items-center space-x-3">
-                                <div
-                                  className="w-4 h-4 rounded-full"
-                                  style={{ backgroundColor: player.color }}
-                                ></div>
-                                <div>
-                                  <p className="font-bold text-white text-lg">
-                                    {player.name}
-                                  </p>
-                                  <p className="text-sm text-gray-300">
-                                    {getRankBadge(index)}
-                                  </p>
-                                </div>
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-white">
+                                  {player.score}
+                                </p>
+                                <p className="text-xs text-gray-300">Points</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-lg font-semibold text-white">
+                                  {stats.accuracy}%
+                                </p>
+                                <p className="text-xs text-gray-300">
+                                  Accuracy
+                                </p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-lg font-semibold text-white">
+                                  {stats.correctAnswers}/{totalQuestions}
+                                </p>
+                                <p className="text-xs text-gray-300">Correct</p>
                               </div>
                             </div>
-
-                            <div className="text-right">
-                              <p className="font-bold text-white text-xl">
-                                {player.score.toLocaleString()}
-                              </p>
-                              <p className="text-sm text-gray-300">
-                                {stats.accuracy}% correct
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Player Stats */}
-                          <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-                            <div>
-                              <p className="text-2xl font-bold text-green-400">
-                                {stats.correctAnswers}
-                              </p>
-                              <p className="text-xs text-gray-400">Correct</p>
-                            </div>
-                            <div>
-                              <p className="text-2xl font-bold text-blue-400">
-                                {stats.averageTime}
-                              </p>
-                              <p className="text-xs text-gray-400">Avg Time</p>
-                            </div>
-                            <div>
-                              <p className="text-2xl font-bold text-orange-400">
-                                {stats.streak}
-                              </p>
-                              <p className="text-xs text-gray-400">
-                                Best Streak
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Progress Bar */}
-                          <div className="mt-4">
-                            <div className="flex justify-between text-xs text-gray-400 mb-1">
-                              <span>Accuracy</span>
-                              <span>{stats.accuracy}%</span>
-                            </div>
-                            <Progress
-                              value={stats.accuracy}
-                              className="h-2 bg-white/20"
-                            />
                           </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Game Statistics */}
+          <div
+            className={`transition-all duration-1000 delay-700 ${
+              animateStats
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-8"
+            }`}
+          >
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
+              <CardContent className="p-8">
+                <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
+                  <Target className="w-6 h-6 mr-2 text-green-400" />
+                  Game Statistics
+                </h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-white mb-2">
+                      {totalQuestions}
+                    </div>
+                    <p className="text-gray-300">Questions</p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Game Statistics */}
-            <div
-              className={`transition-all duration-1000 delay-700 ${
-                animateStats
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-8"
-              }`}
-            >
-              <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
-                <CardContent className="p-6">
-                  <h3 className="text-2xl font-bold text-white mb-6 flex items-center">
-                    <Brain className="w-6 h-6 mr-3 text-purple-400" />
-                    Game Statistics
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="text-center p-4 bg-white/5 rounded-lg">
-                      <div className="flex justify-center mb-2">
-                        <Target className="w-8 h-8 text-blue-400" />
-                      </div>
-                      <p className="text-3xl font-bold text-blue-400">
-                        {totalQuestions}
-                      </p>
-                      <p className="text-sm text-gray-300">Questions Asked</p>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-white mb-2">
+                      {totalPlayers}
                     </div>
-
-                    <div className="text-center p-4 bg-white/5 rounded-lg">
-                      <div className="flex justify-center mb-2">
-                        <Users className="w-8 h-8 text-green-400" />
-                      </div>
-                      <p className="text-3xl font-bold text-green-400">
-                        {totalPlayers}
-                      </p>
-                      <p className="text-sm text-gray-300">Players</p>
-                    </div>
-
-                    <div className="text-center p-4 bg-white/5 rounded-lg">
-                      <div className="flex justify-center mb-2">
-                        <Star className="w-8 h-8 text-purple-400" />
-                      </div>
-                      <p className="text-3xl font-bold text-purple-400">
-                        {averageScore}
-                      </p>
-                      <p className="text-sm text-gray-300">Average Score</p>
-                    </div>
-
-                    <div className="text-center p-4 bg-white/5 rounded-lg">
-                      <div className="flex justify-center mb-2">
-                        <Clock className="w-8 h-8 text-yellow-400" />
-                      </div>
-                      <p className="text-3xl font-bold text-yellow-400">
-                        {gameTime}
-                      </p>
-                      <p className="text-sm text-gray-300">Game Time</p>
-                    </div>
+                    <p className="text-gray-300">Players</p>
                   </div>
-
-                  {/* Game Info */}
-                  <div className="mt-6 pt-6 border-t border-white/20">
-                    <div className="flex justify-between items-center mb-4">
-                      <Badge
-                        variant="outline"
-                        className="border-purple-400 text-purple-300"
-                      >
-                        {category}
-                      </Badge>
-                      <Badge className="bg-yellow-600 text-white">
-                        {difficulty}
-                      </Badge>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-white mb-2">
+                      {averageScore}
                     </div>
-
-                    <div className="text-center">
-                      <p className="text-sm text-gray-400">
-                        Highest Score:{" "}
-                        <span className="text-white font-bold">
-                          {winner?.score?.toLocaleString?.() ?? "-"}
-                        </span>
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        Best Accuracy:{" "}
-                        <span className="text-white font-bold">
-                          {Math.max(
-                            ...sortedPlayers.map(
-                              (p) => getPlayerStats(p).accuracy
-                            )
-                          )}
-                          %
-                        </span>
-                      </p>
-                    </div>
+                    <p className="text-gray-300">Avg Score</p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-white mb-2">
+                      {gameTime}
+                    </div>
+                    <p className="text-gray-300">Duration</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Action Buttons */}
@@ -476,47 +321,27 @@ export function GameResults() {
           >
             <div className="flex justify-center space-x-4">
               <Button
-                size="lg"
-                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-4 px-8 text-lg shadow-2xl transform transition-all duration-200 hover:scale-105"
                 onClick={() => {
-                  localStorage.removeItem("quizrush-localgame");
                   resetGame();
-                  navigate("/mode/local");
+                  navigate("/lobby");
                 }}
+                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold py-3 px-6"
               >
-                <RotateCcw className="w-6 h-6 mr-2" />
+                <RotateCcw className="w-5 h-5 mr-2" />
                 Play Again
               </Button>
               <Button
-                size="lg"
+                onClick={() => navigate("/mode")}
                 variant="outline"
-                className="bg-white/10 border-white/30 text-white hover:bg-white/20 backdrop-blur-sm font-bold py-4 px-8 text-lg"
-                onClick={() => {
-                  resetGame();
-                  navigate("/");
-                }}
+                className="bg-white/10 text-white border-white/30 hover:bg-white/20 font-bold py-3 px-6"
               >
-                <Home className="w-6 h-6 mr-2" />
-                Main Menu
+                <Home className="w-5 h-5 mr-2" />
+                Back to Menu
               </Button>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Auth Modal */}
-      {showAuthModal && (
-        <AuthModal
-          onClose={() => setShowAuthModal(false)}
-          onAuth={async () => {
-            // After auth, update user and re-attempt save
-            const { data } = await supabase.auth.getUser();
-            setUser(data.user);
-            setShowAuthModal(false);
-            setScoreSaved(null); // triggers useEffect to save again
-          }}
-        />
-      )}
     </div>
   );
 }

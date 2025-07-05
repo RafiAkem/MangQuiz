@@ -23,9 +23,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTriviaGame } from "../../lib/stores/useTriviaGame";
-import { Leaderboard } from "./Leaderboard";
-import { AuthModal } from "./AuthModal";
-import { supabase } from "@/lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 
 export function GameLobby() {
@@ -43,29 +40,7 @@ export function GameLobby() {
   // Local state for settings, since store does not have difficulty/category directly
   const [difficulty, setDifficulty] = useState("medium");
   const [category, setCategory] = useState("all");
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
-
-  // Fetch user on mount
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-    // Listen for auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
-    return () => {
-      listener?.subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-  };
 
   const handleAddPlayer = () => {
     if (newPlayerName.trim() && players.length < 4) {
@@ -85,7 +60,7 @@ export function GameLobby() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
       {/* Back Button */}
-      <div className="absolute top-4 left-4 z-50 flex items-center space-x-4">
+      <div className="absolute top-4 left-4 z-50">
         <Button
           size="sm"
           variant="outline"
@@ -94,31 +69,6 @@ export function GameLobby() {
         >
           &#8592; Back
         </Button>
-        {/* Auth/User Bar */}
-        {user ? (
-          <>
-            <span className="text-white/80 text-sm">
-              Signed in as {user.email}
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleSignOut}
-              className="bg-white/10 text-white border-white/20"
-            >
-              Sign Out
-            </Button>
-          </>
-        ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setShowAuthModal(true)}
-            className="bg-white/10 text-white border-white/20"
-          >
-            Sign In
-          </Button>
-        )}
       </div>
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
@@ -199,23 +149,16 @@ export function GameLobby() {
                         >
                           {player.name}
                           <Button
-                            variant="ghost"
                             size="sm"
+                            variant="ghost"
                             onClick={() => removePlayer(player.id)}
-                            className="ml-1 h-4 w-4 p-0 hover:bg-red-500/50"
+                            className="ml-2 h-4 w-4 p-0 text-white hover:bg-blue-500/50"
                           >
                             <X className="w-3 h-3" />
                           </Button>
                         </Badge>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {players.length === 0 && (
-                  <div className="text-center py-8 text-blue-300">
-                    <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>Add 2-4 players to start the game</p>
                   </div>
                 )}
               </CardContent>
@@ -225,7 +168,7 @@ export function GameLobby() {
             <Card className="bg-white/10 backdrop-blur-md border-white/20 shadow-2xl">
               <CardHeader>
                 <CardTitle className="text-white flex items-center">
-                  <Settings className="w-5 h-5 mr-2 text-purple-400" />
+                  <Settings className="w-5 h-5 mr-2 text-green-400" />
                   Game Settings
                 </CardTitle>
               </CardHeader>
@@ -233,39 +176,36 @@ export function GameLobby() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-blue-200 mb-2">
-                      Difficulty Level
+                      Difficulty
                     </label>
                     <Select value={difficulty} onValueChange={setDifficulty}>
                       <SelectTrigger className="bg-white/10 border-white/30 text-white">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="easy">🟢 Easy</SelectItem>
-                        <SelectItem value="medium">🟡 Medium</SelectItem>
-                        <SelectItem value="hard">🔴 Hard</SelectItem>
-                        <SelectItem value="expert">⚫ Expert</SelectItem>
+                        <SelectItem value="easy">Easy</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="hard">Hard</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-blue-200 mb-2">
-                      Category Focus
+                      Category
                     </label>
                     <Select value={category} onValueChange={setCategory}>
                       <SelectTrigger className="bg-white/10 border-white/30 text-white">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">🌍 All Periods</SelectItem>
-                        <SelectItem value="ancient">
-                          🏛️ Ancient History
-                        </SelectItem>
-                        <SelectItem value="medieval">
-                          ⚔️ Medieval Times
-                        </SelectItem>
-                        <SelectItem value="modern">🏭 Modern Era</SelectItem>
-                        <SelectItem value="contemporary">
-                          🚀 Contemporary
+                        <SelectItem value="all">All Categories</SelectItem>
+                        <SelectItem value="history">History</SelectItem>
+                        <SelectItem value="science">Science</SelectItem>
+                        <SelectItem value="geography">Geography</SelectItem>
+                        <SelectItem value="literature">Literature</SelectItem>
+                        <SelectItem value="sports">Sports</SelectItem>
+                        <SelectItem value="entertainment">
+                          Entertainment
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -273,124 +213,73 @@ export function GameLobby() {
                 </div>
               </CardContent>
             </Card>
-          </div>
 
-          {/* Game Info & Actions */}
-          <div className="space-y-6">
-            {/* Quick Stats */}
-            <Card className="bg-gradient-to-br from-yellow-500/20 to-orange-500/20 backdrop-blur-md border-yellow-400/30 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Trophy className="w-5 h-5 mr-2 text-yellow-400" />
-                  Game Rules
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-blue-100">
-                <div className="flex items-start space-x-2">
-                  <Clock className="w-4 h-4 mt-0.5 text-blue-400 flex-shrink-0" />
-                  <span>5-minute lightning rounds</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Brain className="w-4 h-4 mt-0.5 text-purple-400 flex-shrink-0" />
-                  <span>Multiple choice questions</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Star className="w-4 h-4 mt-0.5 text-yellow-400 flex-shrink-0" />
-                  <span>15 seconds per question</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Trophy className="w-4 h-4 mt-0.5 text-green-400 flex-shrink-0" />
-                  <span>Points for speed & accuracy</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Action Buttons */}
-            <div className="space-y-3">
+            {/* Start Game Button */}
+            <div className="text-center">
               <Button
-                size="lg"
+                onClick={startGame}
                 disabled={players.length < 2}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-4 text-lg shadow-2xl transform transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                onClick={() => {
-                  startGame();
-                  navigate("/game");
-                }}
+                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold py-4 px-8 text-lg shadow-2xl"
               >
                 <Play className="w-6 h-6 mr-2" />
                 Start Game
               </Button>
-
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 text-lg shadow-2xl transform transition-all duration-200 hover:scale-105 border-purple-400/30"
-                onClick={() => navigate("/custom-questions")}
-              >
-                <Sparkles className="w-6 h-6 mr-2" />
-                AI-Generated Questions
-              </Button>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  className="bg-white/10 border-white/30 text-white hover:bg-white/20 backdrop-blur-sm"
-                  onClick={() => setShowLeaderboard(true)}
-                >
-                  <Trophy className="w-4 h-4 mr-2" />
-                  Leaderboard
-                </Button>
-                <Button
-                  variant="outline"
-                  className="bg-white/10 border-white/30 text-white hover:bg-white/20 backdrop-blur-sm"
-                  disabled
-                >
-                  <Settings className="w-4 h-4 mr-2" />
-                  Settings
-                </Button>
-              </div>
+              {players.length < 2 && (
+                <p className="text-yellow-300 mt-2 text-sm">
+                  Add at least 2 players to start
+                </p>
+              )}
             </div>
+          </div>
 
-            {/* Quick Tips */}
-            <Card className="bg-white/5 backdrop-blur-md border-white/10 shadow-xl">
-              <CardContent className="pt-6">
-                <h3 className="text-white font-semibold mb-2 flex items-center">
-                  <Star className="w-4 h-4 mr-2 text-yellow-400" />
-                  Pro Tips
-                </h3>
-                <ul className="text-xs text-blue-200 space-y-1">
-                  <li>• Answer quickly for bonus points</li>
-                  <li>• Study all historical periods</li>
-                  <li>• Practice makes perfect!</li>
-                </ul>
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Quick Stats */}
+            <Card className="bg-white/10 backdrop-blur-md border-white/20">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Trophy className="w-5 h-5 text-yellow-400" />
+                  <h3 className="text-white font-semibold">Game Info</h3>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-blue-200">Players:</span>
+                    <span className="text-white">{players.length}/4</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-200">Difficulty:</span>
+                    <span className="text-white capitalize">{difficulty}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-200">Category:</span>
+                    <span className="text-white capitalize">{category}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-blue-200">Duration:</span>
+                    <span className="text-white">5 minutes</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tips */}
+            <Card className="bg-white/10 backdrop-blur-md border-white/20">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                  <h3 className="text-white font-semibold">Tips</h3>
+                </div>
+                <div className="space-y-2 text-sm text-blue-200">
+                  <p>• Answer quickly to earn bonus points</p>
+                  <p>• Work together with your team</p>
+                  <p>• Use the timer to your advantage</p>
+                  <p>• Have fun and learn something new!</p>
+                </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </div>
-      {/* Leaderboard Modal */}
-      {showLeaderboard && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="relative w-full max-w-xl mx-auto">
-            <button
-              className="absolute top-2 right-2 text-white bg-black/40 rounded-full p-2 hover:bg-black/70 z-10"
-              onClick={() => setShowLeaderboard(false)}
-              aria-label="Close leaderboard"
-            >
-              <span className="text-2xl">&times;</span>
-            </button>
-            <Leaderboard />
-          </div>
-        </div>
-      )}
-      {/* Auth Modal */}
-      {showAuthModal && (
-        <AuthModal
-          onClose={() => setShowAuthModal(false)}
-          onAuth={() => {
-            supabase.auth.getUser().then(({ data }) => setUser(data.user));
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -68,7 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API routes for room management
   app.get("/api/rooms", (req, res) => {
     const publicRooms = Array.from(rooms.values())
-      .filter((room) => !room.isPrivate && room.status === "waiting")
+      .filter((room) => room.status === "waiting")
       .map((room) => ({
         id: room.id,
         name: room.name,
@@ -78,13 +78,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           room.players.find((p) => p.id === room.hostId)?.name || "Unknown",
         settings: room.settings,
         createdAt: room.createdAt,
+        isPrivate: room.isPrivate,
       }));
 
     res.json({ rooms: publicRooms });
   });
 
   app.post("/api/rooms", (req, res) => {
-    const { name, hostName, isPrivate, password, settings } = req.body;
+    const { name, hostName, isPrivate, password, maxPlayers, settings } =
+      req.body;
 
     if (!name || !hostName) {
       return res
@@ -100,7 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       name,
       hostId,
       players: [],
-      maxPlayers: 4,
+      maxPlayers: maxPlayers || 4,
       isPrivate: isPrivate || false,
       password,
       status: "waiting",
@@ -542,11 +544,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      room.settings = { ...room.settings, ...data.settings };
+      // Handle maxPlayers update
+      if (data.maxPlayers !== undefined) {
+        const newMaxPlayers = parseInt(data.maxPlayers);
+        if (newMaxPlayers < room.players.length) {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              message: `Cannot set max players to ${newMaxPlayers} when there are ${room.players.length} players in the room`,
+            })
+          );
+          return;
+        }
+        if (newMaxPlayers < 2 || newMaxPlayers > 8) {
+          ws.send(
+            JSON.stringify({
+              type: "error",
+              message: "Max players must be between 2 and 8",
+            })
+          );
+          return;
+        }
+        room.maxPlayers = newMaxPlayers;
+      }
+
+      // Handle other settings
+      if (data.settings) {
+        room.settings = { ...room.settings, ...data.settings };
+      }
 
       broadcastToRoom(room, {
         type: "settings_updated",
         settings: room.settings,
+        maxPlayers: room.maxPlayers,
       });
     }
 

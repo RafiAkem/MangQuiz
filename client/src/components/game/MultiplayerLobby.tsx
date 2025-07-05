@@ -59,6 +59,7 @@ interface Room {
   playerCount: number;
   maxPlayers: number;
   hostName: string;
+  isPrivate: boolean;
   settings: {
     difficulty: string;
     category: string;
@@ -94,12 +95,14 @@ export function MultiplayerLobby() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [joinPassword, setJoinPassword] = useState("");
 
   // Form states
   const [roomName, setRoomName] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [roomPassword, setRoomPassword] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
+  const [maxPlayers, setMaxPlayers] = useState(4);
   const [roomSettings, setRoomSettings] = useState({
     difficulty: "medium",
     category: "all",
@@ -117,6 +120,9 @@ export function MultiplayerLobby() {
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiSuccess, setAiSuccess] = useState(false);
+
+  // Room settings state
+  const [roomMaxPlayers, setRoomMaxPlayers] = useState(4);
 
   // Initialize WebSocket message handler
   useEffect(() => {
@@ -147,6 +153,7 @@ export function MultiplayerLobby() {
         console.log("Room joined:", data);
         setCurrentRoom(data.room);
         setPlayers(data.players);
+        setRoomMaxPlayers(data.room.maxPlayers);
         setCurrentPlayer(
           data.players.find((p: Player) => p.id === data.playerId) || null
         );
@@ -246,10 +253,16 @@ export function MultiplayerLobby() {
 
       case "settings_updated":
         console.log("Settings updated:", data);
-        setCurrentRoom((prev: any) =>
-          prev ? { ...prev, settings: data.settings } : null
-        );
-        toast.info("Game settings have been updated");
+        if (data.settings) {
+          setRoomSettings(data.settings);
+        }
+        if (data.maxPlayers !== undefined) {
+          setRoomMaxPlayers(data.maxPlayers);
+          setCurrentRoom((prev: any) =>
+            prev ? { ...prev, maxPlayers: data.maxPlayers } : null
+          );
+        }
+        toast.success("Room settings updated");
         break;
 
       case "error":
@@ -292,6 +305,7 @@ export function MultiplayerLobby() {
           hostName: playerName,
           isPrivate,
           password: isPrivate ? roomPassword : undefined,
+          maxPlayers: maxPlayers,
           settings: roomSettings,
         }),
       });
@@ -305,6 +319,7 @@ export function MultiplayerLobby() {
             type: "join_room",
             roomId: data.roomId,
             playerName: playerName,
+            password: isPrivate ? roomPassword : undefined,
           })
         );
 
@@ -321,6 +336,7 @@ export function MultiplayerLobby() {
         setPlayerName("");
         setRoomPassword("");
         setIsPrivate(false);
+        setMaxPlayers(4);
       } else {
         toast.error(data.error || "Failed to create room");
       }
@@ -428,6 +444,17 @@ export function MultiplayerLobby() {
     );
   };
 
+  const updateMaxPlayers = (newMaxPlayers: number) => {
+    if (!isHost) return;
+
+    wsRef.current?.send(
+      JSON.stringify({
+        type: "update_settings",
+        maxPlayers: newMaxPlayers,
+      })
+    );
+  };
+
   // AI Question Generation Handler
   const handleGenerateAIQuestions = async () => {
     setIsGeneratingAI(true);
@@ -503,7 +530,7 @@ export function MultiplayerLobby() {
               <CardHeader>
                 <CardTitle className="text-white flex items-center">
                   <Users className="w-5 h-5 mr-2" />
-                  Players ({players.length}/{currentRoom.maxPlayers})
+                  Players ({players.length}/{roomMaxPlayers})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -706,6 +733,45 @@ export function MultiplayerLobby() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Room Settings (Host Only) */}
+              {isHost && (
+                <Card className="bg-white/10 backdrop-blur-md border-white/20">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center">
+                      <Settings className="w-5 h-5 mr-2 text-blue-400" />
+                      Room Settings
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">
+                        Max Players
+                      </label>
+                      <Select
+                        value={roomMaxPlayers.toString()}
+                        onValueChange={(value) =>
+                          updateMaxPlayers(parseInt(value))
+                        }
+                      >
+                        <SelectTrigger className="bg-white/10 border-white/30 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="2">2 Players</SelectItem>
+                          <SelectItem value="3">3 Players</SelectItem>
+                          <SelectItem value="4">4 Players</SelectItem>
+                          <SelectItem value="6">6 Players</SelectItem>
+                          <SelectItem value="8">8 Players</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-blue-300 text-xs mt-1">
+                        Current: {players.length} players
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Chat */}
@@ -842,7 +908,20 @@ export function MultiplayerLobby() {
                       className="flex items-center justify-between p-4 bg-white/5 rounded-lg"
                     >
                       <div>
-                        <h3 className="text-white font-medium">{room.name}</h3>
+                        <div className="flex items-center space-x-2">
+                          <h3 className="text-white font-medium">
+                            {room.name}
+                          </h3>
+                          {room.isPrivate && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-yellow-600 text-white text-xs"
+                            >
+                              <Lock className="w-3 h-3 mr-1" />
+                              Private
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-blue-200 text-sm">
                           Host: {room.hostName} • {room.playerCount}/
                           {room.maxPlayers} players
@@ -917,6 +996,24 @@ export function MultiplayerLobby() {
                     />
                   </div>
                 )}
+                <div>
+                  <label className="text-white text-sm">Max Players</label>
+                  <Select
+                    value={maxPlayers.toString()}
+                    onValueChange={(value) => setMaxPlayers(parseInt(value))}
+                  >
+                    <SelectTrigger className="bg-white/10 border-white/30 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2">2 Players</SelectItem>
+                      <SelectItem value="3">3 Players</SelectItem>
+                      <SelectItem value="4">4 Players</SelectItem>
+                      <SelectItem value="6">6 Players</SelectItem>
+                      <SelectItem value="8">8 Players</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button
                   onClick={createRoom}
                   className="w-full bg-purple-600 hover:bg-purple-700"
@@ -943,7 +1040,15 @@ export function MultiplayerLobby() {
         </div>
 
         {/* Join Room Dialog */}
-        <Dialog open={showJoinRoom} onOpenChange={setShowJoinRoom}>
+        <Dialog
+          open={showJoinRoom}
+          onOpenChange={(open) => {
+            setShowJoinRoom(open);
+            if (!open) {
+              setJoinPassword("");
+            }
+          }}
+        >
           <DialogContent className="bg-white/95">
             <DialogHeader>
               <DialogTitle>Join Room</DialogTitle>
@@ -959,11 +1064,33 @@ export function MultiplayerLobby() {
               </div>
               {selectedRoom && (
                 <div className="p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-medium">{selectedRoom.name}</h3>
+                  <div className="flex items-center space-x-2 mb-2">
+                    <h3 className="font-medium">{selectedRoom.name}</h3>
+                    {selectedRoom.isPrivate && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-yellow-600 text-white text-xs"
+                      >
+                        <Lock className="w-3 h-3 mr-1" />
+                        Private
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-600">
                     Host: {selectedRoom.hostName} • {selectedRoom.playerCount}/
                     {selectedRoom.maxPlayers} players
                   </p>
+                </div>
+              )}
+              {selectedRoom?.isPrivate && (
+                <div>
+                  <label className="text-sm font-medium">Password</label>
+                  <Input
+                    value={joinPassword}
+                    onChange={(e) => setJoinPassword(e.target.value)}
+                    placeholder="Enter room password"
+                    type="password"
+                  />
                 </div>
               )}
               <div className="flex justify-end space-x-2">
@@ -974,8 +1101,17 @@ export function MultiplayerLobby() {
                   Cancel
                 </Button>
                 <Button
-                  onClick={() => selectedRoom && joinRoom(selectedRoom)}
-                  disabled={!playerName.trim()}
+                  onClick={() =>
+                    selectedRoom &&
+                    joinRoom(
+                      selectedRoom,
+                      selectedRoom.isPrivate ? joinPassword : undefined
+                    )
+                  }
+                  disabled={
+                    !playerName.trim() ||
+                    (selectedRoom?.isPrivate && !joinPassword.trim())
+                  }
                 >
                   Join Room
                 </Button>

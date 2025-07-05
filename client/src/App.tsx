@@ -43,7 +43,7 @@ function ModeSelect() {
         <p className="mt-6 text-white/60 text-sm text-center">
           Local mode: 2-4 players on one device, no login required.
           <br />
-          Multiplayer: Play online, login required, leaderboard enabled.
+          Multiplayer: Play online with friends in real-time.
         </p>
       </div>
     </div>

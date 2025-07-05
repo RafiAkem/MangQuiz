@@ -9,9 +9,10 @@ The QuizRush multiplayer lobby system enables real-time online multiplayer trivi
 ### 🏠 Room Management
 
 - **Create Rooms**: Hosts can create public or private rooms with custom settings
-- **Join Rooms**: Players can browse and join available public rooms
-- **Private Rooms**: Password-protected rooms for private games
+- **Join Rooms**: Players can browse and join available rooms (public and private)
+- **Private Rooms**: Password-protected rooms with "Private" indicator
 - **Room Settings**: Configurable difficulty, category, and question count
+- **Real-time Updates**: All room changes are synchronized in real-time
 
 ### 👥 Player Management
 
@@ -19,6 +20,8 @@ The QuizRush multiplayer lobby system enables real-time online multiplayer trivi
 - **Ready System**: Players must mark themselves as ready before the game can start
 - **Host Controls**: Only the host can start the game and modify settings
 - **Auto Host Transfer**: If the host leaves, the next player becomes host
+- **Max Players**: Hosts can set and change the maximum number of players (2-8)
+- **Player Count**: Real-time display of current players vs max players
 
 ### 💬 Real-time Chat
 
@@ -32,6 +35,8 @@ The QuizRush multiplayer lobby system enables real-time online multiplayer trivi
 - **Real-time Updates**: All players see the same game state
 - **Score Tracking**: Live score updates during gameplay
 - **Connection Status**: Visual indicator of WebSocket connection
+- **Timer System**: 20-second timer for each question
+- **Answer Reveal**: Shows correct answers after each question
 
 ## Technical Implementation
 
@@ -54,7 +59,7 @@ The QuizRush multiplayer lobby system enables real-time online multiplayer trivi
 ```typescript
 // Client to Server
 {
-  type: 'join_room' | 'leave_room' | 'player_ready' | 'start_game' | 'chat_message' | 'update_settings',
+  type: 'join_room' | 'leave_room' | 'player_ready' | 'start_game' | 'chat_message' | 'update_settings' | 'answer',
   // ... additional data
 }
 
@@ -85,9 +90,10 @@ The QuizRush multiplayer lobby system enables real-time online multiplayer trivi
 
 1. Navigate to "Online Multiplayer" from the mode selection
 2. Fill in room name and your player name
-3. Optionally enable private room with password
-4. Configure game settings (difficulty, category, questions)
-5. Click "Create Room"
+3. Choose max players (2-8)
+4. Optionally enable private room with password
+5. Configure game settings (difficulty, category, questions)
+6. Click "Create Room"
 
 ### Joining a Room
 
@@ -95,6 +101,7 @@ The QuizRush multiplayer lobby system enables real-time online multiplayer trivi
 2. Click "Join" on a room
 3. Enter your player name
 4. If it's a private room, enter the password
+5. Click "Join Room"
 
 ### Starting a Game
 
