@@ -9,6 +9,7 @@ import {
   Star,
   Plus,
   X,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -317,6 +318,16 @@ export function GameLobby() {
               >
                 <Play className="w-6 h-6 mr-2" />
                 Start Game
+              </Button>
+
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-4 text-lg shadow-2xl transform transition-all duration-200 hover:scale-105 border-purple-400/30"
+                onClick={() => navigate("/custom-questions")}
+              >
+                <Sparkles className="w-6 h-6 mr-2" />
+                AI-Generated Questions
               </Button>
 
               <div className="grid grid-cols-2 gap-3">

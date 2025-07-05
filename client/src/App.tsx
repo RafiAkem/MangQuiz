@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { GameLobby } from "./components/game/GameLobby";
 import { LocalTriviaGame } from "./components/game/LocalTriviaGame";
 import { MultiplayerLobby } from "./components/game/MultiplayerLobby";
+import { CustomQuestionsSetup } from "./components/game/CustomQuestionsSetup";
 import { useTriviaGame } from "./lib/stores/useTriviaGame";
 import { useAudio } from "./lib/stores/useAudio";
 import { Button } from "./components/ui/button";
@@ -117,6 +118,7 @@ function AppContent() {
             />
           }
         />
+        <Route path="/custom-questions" element={<CustomQuestionsSetup />} />
         {/* You can add more routes for results, etc. */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

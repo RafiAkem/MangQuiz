@@ -44,6 +44,7 @@ interface TriviaGameState extends GameState {
   addPlayer: (name: string) => void;
   removePlayer: (playerId: string) => void;
   startGame: () => void;
+  startGameWithQuestions: (customQuestions: Question[]) => void;
   submitAnswer: (playerId: string, answerIndex: number) => void;
   nextQuestion: () => void;
   showQuestionAnswer: () => void;
@@ -103,6 +104,20 @@ export const useTriviaGame = create<TriviaGameState>()(
         currentQuestionIndex: 0,
         timeRemaining: settings.gameDuration,
         questionTimeRemaining: settings.questionTime,
+        gameStartTime: Date.now(),
+        selectedAnswers: {},
+        showAnswer: false,
+        players: get().players.map((p) => ({ ...p, score: 0 })),
+      });
+    },
+
+    startGameWithQuestions: (customQuestions: Question[]) => {
+      set({
+        phase: "playing",
+        questions: customQuestions,
+        currentQuestionIndex: 0,
+        timeRemaining: DEFAULT_SETTINGS.gameDuration,
+        questionTimeRemaining: DEFAULT_SETTINGS.questionTime,
         gameStartTime: Date.now(),
         selectedAnswers: {},
         showAnswer: false,
@@ -213,6 +228,7 @@ useTriviaGame.subscribe((state) => {
     addPlayer,
     removePlayer,
     startGame,
+    startGameWithQuestions,
     submitAnswer,
     nextQuestion,
     showQuestionAnswer,
