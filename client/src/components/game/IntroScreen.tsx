@@ -99,13 +99,35 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
                 : "opacity-0 translate-y-8"
             }`}
           >
-            <p className="text-xl md:text-2xl text-white/70 mb-12 font-light leading-relaxed">
+            <p className="text-xl md:text-2xl text-white/70 mb-8 font-light leading-relaxed">
               Test your knowledge through time.
               <br />
               <span className="text-purple-300">
                 Challenge friends. Make history.
               </span>
             </p>
+
+            {/* Project Information */}
+            <div className="mb-8 p-4 bg-white/5 rounded-lg border border-white/10 backdrop-blur-sm">
+              <p className="text-sm text-white/60 mb-2">
+                IBM x Hacktiv8 Capstone Project
+              </p>
+              <p className="text-lg text-white/80 font-medium">
+                Developed by Rafi Ikhsanul Hakim
+              </p>
+            </div>
+
+            {/* Multiplayer Disclaimer */}
+            <div className="mb-8 p-4 bg-yellow-500/10 rounded-lg border border-yellow-400/30 backdrop-blur-sm">
+              <p className="text-sm text-yellow-300 font-medium mb-1">
+                ⚠️ Multiplayer Notice
+              </p>
+              <p className="text-xs text-yellow-200">
+                Multiplayer mode is currently in development and may have bugs.
+                For the best experience, try the Local (Party) Mode with
+                AI-generated questions!
+              </p>
+            </div>
           </div>
 
           {/* Feature highlights */}

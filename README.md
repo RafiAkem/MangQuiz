@@ -1,170 +1,187 @@
-# QuizRush - Interactive Trivia Game
+# MangQuiz Challenge
 
-A modern, real-time trivia game built with React, TypeScript, and WebSocket technology. Features both local multiplayer and online multiplayer modes with AI-generated custom questions.
+## Description
 
-## Features
-
-### 🎮 Game Modes
-
-- **Local (Party) Mode**: 2-4 players on one device
-- **Online Multiplayer**: Real-time multiplayer with WebSocket
-- **AI-Generated Questions**: Custom questions using Google's Gemini AI
-
-### 🧠 AI-Powered Custom Questions
-
-- Generate unlimited custom trivia questions
-- Multiple categories: History, Science, Geography, Literature, Sports, Entertainment
-- Adjustable difficulty levels
-- Custom topic focus
-- Real-time question preview
-
-### 🏆 Game Features
-
-- 5-minute lightning rounds
-- Real-time scoring and leaderboards
-- Multiple choice questions with explanations
-- Beautiful, responsive UI with animations
-- Sound effects and visual feedback
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-
-### Installation
-
-1. Clone the repository:
-
-```bash
-git clone <repository-url>
-cd QuizRush
-```
-
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-3. Start the development server:
-
-```bash
-npm run dev
-```
-
-4. Open your browser and navigate to `http://localhost:3000`
-
-## AI-Generated Questions Setup
-
-To use the AI-generated questions feature:
-
-1. Get a Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create a `.env` file in the root directory:
-
-```
-VITE_GEMINI_API_KEY=your_api_key_here
-```
-
-3. Restart the development server
-
-For detailed setup instructions, see [CUSTOM_QUESTIONS_README.md](./CUSTOM_QUESTIONS_README.md)
-
-## Usage
-
-### Local Mode
-
-1. Select "Local (Party) Mode"
-2. Add 2-4 players
-3. Choose between standard questions or AI-generated questions
-4. Start the game and enjoy!
-
-### Online Multiplayer
-
-1. Select "Online Multiplayer"
-2. Create or join a room
-3. Wait for all players to be ready
-4. Start the game
-
-### AI-Generated Questions
-
-1. In Local Mode, click "AI-Generated Questions"
-2. Configure category, difficulty, and question count
-3. Optionally specify a custom topic
-4. Generate questions and start the game
-
-## Project Structure
-
-```
-├── client/                 # Frontend React application
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   │   ├── services/  # API services (including Gemini)
-│   │   │   └── stores/    # State management
-│   │   └── types/         # TypeScript type definitions
-├── server/                # Backend Express server
-│   ├── routes.ts          # WebSocket and API routes
-│   └── index.ts           # Server entry point
-└── shared/                # Shared utilities
-```
+MangQuiz Challenge is an interactive trivia game that combines traditional quiz mechanics with modern AI technology. Built as an IBM x Hacktiv8 Capstone Project, it features both local multiplayer and online multiplayer modes, with the unique ability to generate custom questions using Google's Gemini AI. Players can test their knowledge across multiple categories, compete in real-time, and enjoy a seamless gaming experience with beautiful animations and responsive design.
 
 ## Technologies Used
 
 ### Frontend
 
-- React 18 with TypeScript
-- Vite for build tooling
-- Tailwind CSS for styling
-- Zustand for state management
-- Radix UI for components
-- Google AI SDK for Gemini integration
+- **React 18** with TypeScript for type-safe development
+- **Vite** for fast build tooling and development server
+- **Tailwind CSS** for utility-first styling
+- **Zustand** for lightweight state management
+- **Radix UI** for accessible component primitives
+- **Lucide React** for consistent iconography
 
 ### Backend
 
-- Express.js
-- WebSocket for real-time communication
-- UUID for unique identifiers
+- **Express.js** for RESTful API endpoints
+- **WebSocket** for real-time multiplayer communication
+- **UUID** for unique identifier generation
 
-## Development
+### AI Integration
 
-### Available Scripts
+- **Google Generative AI SDK** for Gemini API integration
+- **Google Gemini 2.0 Flash** model for question generation
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run check` - TypeScript type checking
+### Development Tools
 
-### Environment Variables
+- **TypeScript** for type safety
+- **ESLint** and **Prettier** for code quality
+- **PostCSS** for CSS processing
 
-- `VITE_GEMINI_API_KEY` - Google Gemini API key (optional, for AI questions)
+## Features
 
-## Documentation
+### 🎮 Game Modes
 
-- [Custom Questions Setup](./CUSTOM_QUESTIONS_README.md) - AI-generated questions feature
-- [Multiplayer Documentation](./MULTIPLAYER_README.md) - Online multiplayer implementation
-- [Deployment Guide](./DEPLOYMENT.md) - Production deployment instructions
+- **Local (Party) Mode**: 2-4 players on one device with pass-and-play mechanics
+- **Online Multiplayer**: Real-time multiplayer battles with WebSocket technology
+- **AI-Generated Questions**: Unlimited custom trivia questions powered by Google Gemini
 
-## Contributing
+### 🧠 AI-Powered Custom Questions
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+- Generate questions across multiple categories (History, Science, Geography, Literature, Sports, Entertainment)
+- Adjustable difficulty levels (Easy, Medium, Hard)
+- Custom topic focus for personalized quizzes
+- Real-time question generation with instant game start
 
-## License
+### 🏆 Core Game Features
 
-This project is licensed under the MIT License.
+- 5-minute lightning rounds for quick gameplay
+- Real-time scoring and dynamic leaderboards
+- Multiple choice questions with detailed explanations
+- Beautiful, responsive UI with smooth animations
+- Sound effects and visual feedback for enhanced UX
+- Cross-platform compatibility
 
-## Support
+### 🎨 User Experience
 
-For issues and questions:
+- Modern gradient design with purple/indigo theme
+- Smooth transitions and micro-interactions
+- Mobile-responsive layout
+- Intuitive navigation and game flow
 
-1. Check the documentation files
-2. Look for existing issues
-3. Create a new issue with detailed information
+## Setup Instructions
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn package manager
+- Google Gemini API key (for AI features)
+
+### Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repository-url>
+   cd QuizRush
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Environment Configuration**
+
+   Create a `.env` file in the `client/` directory:
+
+   ```env
+   VITE_GEMINI_API_KEY=your_gemini_api_key_here
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. **Start development server**
+
+   ```bash
+   npm run dev
+   ```
+
+5. **Access the application**
+   Open your browser and navigate to `http://localhost:3000`
+
+### AI Setup (Optional)
+
+1. **Get Gemini API Key**
+
+   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a new API key
+   - Add it to your `.env` file as `VITE_GEMINI_API_KEY`
+
+2. **Test AI Integration**
+   - Navigate to Local Mode
+   - Select "AI-Generated Questions"
+   - Configure your preferences and generate questions
+
+### Production Deployment
+
+1. **Build the application**
+
+   ```bash
+   npm run build
+   ```
+
+2. **Start production server**
+   ```bash
+   npm run start
+   ```
+
+For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+## AI Support Explanation
+
+### How AI Integration Works
+
+MangQuiz Challenge leverages Google's Gemini 2.0 Flash model to generate dynamic, engaging trivia questions. The AI integration works through several key components:
+
+#### Question Generation Process
+
+1. **User Configuration**: Players select category, difficulty, and question count
+2. **API Request**: The frontend sends a structured prompt to Gemini API
+3. **Response Processing**: AI-generated questions are formatted and validated
+4. **Game Integration**: Questions are seamlessly integrated into the game flow
+
+#### AI Features
+
+- **Category-Specific Questions**: AI generates questions tailored to selected categories
+- **Difficulty Scaling**: Questions are adjusted based on difficulty level
+- **Custom Topics**: Players can specify custom topics for personalized quizzes
+- **Real-time Generation**: Questions are generated on-demand for fresh content
+
+#### Technical Implementation
+
+- **Google Generative AI SDK**: Official SDK for reliable API communication
+- **Error Handling**: Graceful fallback to standard questions if AI fails
+- **Rate Limiting**: Respects Google's API rate limits
+- **Caching**: Optimized for performance and cost efficiency
+
+#### Benefits
+
+- **Unlimited Content**: No predefined question limits
+- **Fresh Questions**: Each game can have unique questions
+- **Personalized Experience**: Custom topics and difficulty levels
+- **Scalable**: Can generate questions for any category or topic
+
+### AI Usage Guidelines
+
+- Requires valid Gemini API key
+- Subject to Google's terms of service
+- Rate limits apply based on Google's pricing
+- Recommended for enhanced gameplay experience
 
 ---
 
-**Note**: The AI-generated questions feature requires a valid Gemini API key and is subject to Google's terms of service and rate limits.
+**Developed by**: Rafi Ikhsanul Hakim  
+**Project**: IBM x Hacktiv8 Capstone Project  
+**License**: MIT License
+
+For detailed documentation on specific features:
+
+- [Custom Questions Setup](./CUSTOM_QUESTIONS_README.md)
+- [Multiplayer Implementation](./MULTIPLAYER_README.md)
+- [Deployment Guide](./DEPLOYMENT.md)
