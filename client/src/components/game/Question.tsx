@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Zap,
 } from "lucide-react";
+import { useEffect } from "react";
 
 export function Question() {
   const {
@@ -27,7 +28,18 @@ export function Question() {
 
   const currentQuestion = questions[currentQuestionIndex];
 
-  if (!currentQuestion) return null;
+  // Debug logging
+  useEffect(() => {
+    console.log("Question component - questions count:", questions.length);
+    console.log("Question component - current index:", currentQuestionIndex);
+    console.log("Question component - current question:", currentQuestion);
+    console.log("Question component - players:", players);
+  }, [questions.length, currentQuestionIndex, currentQuestion, players]);
+
+  if (!currentQuestion) {
+    console.log("Question component - no current question, returning null");
+    return null;
+  }
 
   const allPlayersAnswered = players.every(
     (player) => selectedAnswers[player.id] !== undefined

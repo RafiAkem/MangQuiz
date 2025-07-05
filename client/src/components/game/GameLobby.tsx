@@ -10,6 +10,7 @@ import {
   Plus,
   X,
   Sparkles,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ export function GameLobby() {
     addPlayer,
     removePlayer,
     startGame,
+    updateSettings,
     settings,
     phase,
     // Add a way to update settings if needed
@@ -53,6 +55,28 @@ export function GameLobby() {
     if (e.key === "Enter") {
       handleAddPlayer();
     }
+  };
+
+  const handleStartGame = () => {
+    console.log("handleStartGame called");
+    console.log("Current players:", players);
+    console.log("Current phase before start:", phase);
+    console.log("Difficulty:", difficulty, "Category:", category);
+
+    // Update settings with current difficulty and category
+    const categoryList = category === "all" ? [] : [category];
+    updateSettings({
+      categories: categoryList,
+    });
+
+    startGame();
+
+    console.log("startGame called, navigating to /game");
+    navigate("/game");
+  };
+
+  const handleCustomQuestions = () => {
+    navigate("/custom-questions");
   };
 
   // Optionally, update store settings when local settings change (not implemented in store yet)
@@ -214,22 +238,34 @@ export function GameLobby() {
               </CardContent>
             </Card>
 
-            {/* Start Game Button */}
-            <div className="text-center">
+            {/* Game Options */}
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Start Game Button */}
               <Button
-                onClick={startGame}
+                onClick={handleStartGame}
                 disabled={players.length < 2}
                 className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold py-4 px-8 text-lg shadow-2xl"
               >
                 <Play className="w-6 h-6 mr-2" />
                 Start Game
               </Button>
-              {players.length < 2 && (
-                <p className="text-yellow-300 mt-2 text-sm">
-                  Add at least 2 players to start
-                </p>
-              )}
+
+              {/* Custom Questions Button */}
+              <Button
+                onClick={handleCustomQuestions}
+                disabled={players.length < 2}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 px-8 text-lg shadow-2xl"
+              >
+                <Zap className="w-6 h-6 mr-2" />
+                AI Custom Questions
+              </Button>
             </div>
+
+            {players.length < 2 && (
+              <p className="text-yellow-300 text-center text-sm">
+                Add at least 2 players to start
+              </p>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -273,7 +309,7 @@ export function GameLobby() {
                   <p>• Answer quickly to earn bonus points</p>
                   <p>• Work together with your team</p>
                   <p>• Use the timer to your advantage</p>
-                  <p>• Have fun and learn something new!</p>
+                  <p>• Try AI custom questions for unique challenges!</p>
                 </div>
               </CardContent>
             </Card>
