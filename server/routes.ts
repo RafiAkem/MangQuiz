@@ -462,14 +462,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Array.isArray(data.questions) &&
         data.questions.length > 0
       ) {
-        questions = data.questions.map((q: any) => ({
-          question: q.question,
-          options: q.options,
-          answer: q.correctAnswer || q.answer,
-          explanation: q.explanation,
-          category: q.category,
-          difficulty: q.difficulty,
-        }));
+        questions = data.questions.map((q: any) => {
+          // Convert correctAnswer index to actual answer text
+          const correctAnswerIndex = q.correctAnswer || q.answer;
+          const answerText =
+            typeof correctAnswerIndex === "number"
+              ? q.options[correctAnswerIndex]
+              : correctAnswerIndex;
+
+          return {
+            question: q.question,
+            options: q.options,
+            answer: answerText,
+            explanation: q.explanation,
+            category: q.category,
+            difficulty: q.difficulty,
+          };
+        });
       } else {
         ws.send(
           JSON.stringify({
