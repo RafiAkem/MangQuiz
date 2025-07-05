@@ -49,60 +49,17 @@ type GameRoomWithTimers = GameRoom & {
   revealTimeLeft?: number;
 };
 
-// Helper to get timer duration (could be from settings)
+// Helper to get timer duration
 const QUESTION_TIME = 20; // seconds
 const REVEAL_TIME = 2; // seconds
 
-// In-memory storage for rooms (in production, use Redis or database)
 const rooms = new Map<string, GameRoomWithTimers>();
 const playerToRoom = new Map<string, string>();
-
-// Simple static question generator (replace with LLM later)
-function generateQuestions(
-  count: number
-): { question: string; options: string[]; answer: string }[] {
-  const sample = [
-    {
-      question: "What is the capital of France?",
-      options: ["Paris", "Berlin", "Rome", "Madrid"],
-      answer: "Paris",
-    },
-    {
-      question: "Who wrote Hamlet?",
-      options: ["Shakespeare", "Tolstoy", "Hemingway", "Dickens"],
-      answer: "Shakespeare",
-    },
-    {
-      question: "What is 2 + 2?",
-      options: ["3", "4", "5", "6"],
-      answer: "4",
-    },
-    {
-      question: "What is the largest planet?",
-      options: ["Earth", "Mars", "Jupiter", "Saturn"],
-      answer: "Jupiter",
-    },
-    {
-      question: "What is the boiling point of water?",
-      options: ["90°C", "100°C", "110°C", "120°C"],
-      answer: "100°C",
-    },
-  ];
-  // Repeat and shuffle for demo
-  let questions = [];
-  for (let i = 0; i < count; i++) {
-    const q = sample[i % sample.length];
-    // Shuffle options
-    const opts = [...q.options].sort(() => Math.random() - 0.5);
-    questions.push({ ...q, options: opts });
-  }
-  return questions;
-}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
-  // WebSocket server for real-time multiplayer - use a specific path to avoid conflicts with Vite HMR
+  // WebSocket server for real-time multiplayer
   const wss = new WebSocketServer({
     server: httpServer,
     path: "/ws/multiplayer", // Specific path for multiplayer WebSocket
@@ -217,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             handlePlayerReady(ws, data, currentPlayer, currentRoom);
             break;
           case "start_game":
-            handleStartGame(ws, currentPlayer, currentRoom);
+            handleStartGame(ws, currentPlayer, currentRoom, data);
             break;
           case "chat_message":
             handleChatMessage(ws, data, currentPlayer, currentRoom);
@@ -454,18 +411,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     function handleStartGame(
       ws: any,
       player: Player | null,
-      room: GameRoomWithTimers | null
+      room: GameRoomWithTimers | null,
+      data?: any // Accept data for custom questions
     ) {
-      console.log("handleStartGame called");
-      console.log("Player:", player);
-      console.log("Room:", room);
-
       if (!player || !room) {
-        console.log("No player or room");
         return;
       }
       if (!player.isHost) {
-        console.log("Player is not host");
         ws.send(
           JSON.stringify({
             type: "error",
@@ -475,7 +427,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       if (room.players.length < 2) {
-        console.log("Not enough players:", room.players.length);
         ws.send(
           JSON.stringify({
             type: "error",
@@ -485,7 +436,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       if (!room.players.every((p) => p.isReady)) {
-        console.log("Not all players ready");
         ws.send(
           JSON.stringify({
             type: "error",
@@ -495,11 +445,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      console.log("Starting game...");
-      room.status = "playing";
+      // Only allow game to start if AI questions are provided
+      let questions = undefined;
+      if (
+        data &&
+        data.questions &&
+        Array.isArray(data.questions) &&
+        data.questions.length > 0
+      ) {
+        questions = data.questions.map((q: any) => ({
+          question: q.question,
+          options: q.options,
+          answer: q.correctAnswer || q.answer,
+        }));
+      } else {
+        ws.send(
+          JSON.stringify({
+            type: "error",
+            message: "Please generate AI questions before starting the game.",
+          })
+        );
+        return;
+      }
 
-      // Generate questions
-      const questions = generateQuestions(room.settings.questionCount);
+      room.status = "playing";
 
       // Initialize game state
       room.gameState = {
@@ -510,7 +479,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phase: "playing",
       };
 
-      console.log("Sending game_started message");
       // Send game_started message to all players
       broadcastToRoom(room, {
         type: "game_started",
@@ -588,37 +556,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       player: Player | null,
       room: GameRoomWithTimers | null
     ) {
-      console.log("handlePlayerAnswer called with:", data);
-      console.log("Player:", player);
-      console.log("Room:", room);
-
       if (!player || !room || !room.gameState) {
-        console.log("Missing player, room, or gameState");
         return;
       }
 
       const { answer, playerId } = data;
-      console.log("Answer:", answer, "PlayerId:", playerId);
 
       if (room.gameState.answers[playerId]) {
-        console.log("Player already answered");
         return;
       }
 
-      console.log("Recording answer for player:", playerId);
       room.gameState.answers[playerId] = answer;
 
       const totalAnswers = Object.keys(room.gameState.answers).length;
       const totalPlayers = room.players.length;
-      console.log(`Answers: ${totalAnswers}/${totalPlayers}`);
 
       // If all players have answered, reveal and score
       if (totalAnswers === totalPlayers) {
-        console.log("All players answered, revealing answer");
         clearQuestionTimer(room);
         revealAndScore(room);
       } else {
-        console.log("Broadcasting updated game state");
         broadcastGameState(room);
       }
     }
@@ -650,7 +607,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         questionTimeRemaining: room.timeLeft,
         revealTimeRemaining: room.revealTimeLeft,
       };
-      console.log("Broadcasting game state:", state);
       broadcastToRoom(room, {
         type: "game_state",
         state,
@@ -659,20 +615,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Helper to start a question timer
     function startQuestionTimer(room: GameRoomWithTimers) {
-      console.log("Starting question timer for room:", room.id);
       clearQuestionTimer(room);
       room.timeLeft = QUESTION_TIME;
-      console.log("Initial time left:", room.timeLeft);
 
       room.questionTimer = setInterval(() => {
         room.timeLeft!--;
-        console.log(`Timer tick: ${room.timeLeft}s remaining`);
 
         // Broadcast time left every second
         broadcastGameState(room);
 
         if (room.timeLeft! <= 0) {
-          console.log("Timer expired, revealing answer");
           clearQuestionTimer(room);
           revealAndScore(room);
         }
@@ -681,19 +633,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     function clearQuestionTimer(room: GameRoomWithTimers) {
       if (room.questionTimer) {
-        console.log("Clearing question timer");
         clearInterval(room.questionTimer);
         room.questionTimer = undefined;
       }
     }
 
     function startRevealTimer(room: GameRoomWithTimers) {
-      console.log("Starting reveal timer for room:", room.id);
       clearRevealTimer(room);
       room.revealTimeLeft = REVEAL_TIME;
 
       room.revealTimer = setTimeout(() => {
-        console.log("Reveal timer expired, moving to next question");
         clearRevealTimer(room);
         nextQuestionOrEnd(room);
       }, REVEAL_TIME * 1000);
@@ -701,28 +650,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     function clearRevealTimer(room: GameRoomWithTimers) {
       if (room.revealTimer) {
-        console.log("Clearing reveal timer");
         clearTimeout(room.revealTimer);
         room.revealTimer = undefined;
       }
     }
 
     function revealAndScore(room: GameRoomWithTimers) {
-      console.log("Revealing and scoring answers");
-      // Score answers
       const gs = room.gameState!;
       const currentQ = gs.questions[gs.questionIndex];
       for (const pid in gs.answers) {
         if (gs.answers[pid] === currentQ.answer) {
           gs.scores[pid] = (gs.scores[pid] || 0) + 1;
-          console.log(
-            `Player ${pid} got correct answer, new score: ${gs.scores[pid]}`
-          );
         }
       }
       // Set phase to 'reveal' for UI
       gs.phase = "reveal";
-      console.log("Setting phase to reveal");
       broadcastGameState(room);
       startRevealTimer(room);
     }
@@ -730,14 +672,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     function nextQuestionOrEnd(room: GameRoomWithTimers) {
       const gs = room.gameState!;
       if (gs.questionIndex + 1 < gs.questions.length) {
-        console.log("Moving to next question");
         gs.questionIndex++;
         gs.answers = {};
         gs.phase = "playing";
         broadcastGameState(room);
         startQuestionTimer(room);
       } else {
-        console.log("Game finished");
         gs.phase = "final";
         broadcastGameState(room);
         broadcastToRoom(room, { type: "game_end" });

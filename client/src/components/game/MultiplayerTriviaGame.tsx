@@ -33,30 +33,14 @@ export function MultiplayerTriviaGame({
     playerId
   );
 
-  // Debug props on mount
-  useEffect(() => {
-    console.log("=== MultiplayerTriviaGame mounted ===");
-    console.log("playerId prop:", playerId);
-    console.log("players prop:", players);
-    console.log("location.state:", window.history.state?.usr);
-  }, [playerId, players]);
-
   // Always use playerId from localStorage for robust identification
   useEffect(() => {
     const storedPlayerId = localStorage.getItem("quizRushPlayerId");
-    console.log("=== PlayerId Resolution ===");
-    console.log("playerId prop:", playerId);
-    console.log("storedPlayerId from localStorage:", storedPlayerId);
-    console.log("resolvedPlayerId state:", resolvedPlayerId);
 
     if (storedPlayerId) {
       setResolvedPlayerId(storedPlayerId);
-      console.log("Using playerId from localStorage:", storedPlayerId);
     } else if (playerId) {
       setResolvedPlayerId(playerId);
-      console.log("Using playerId from prop:", playerId);
-    } else {
-      console.error("No playerId found in localStorage or props!");
     }
   }, [playerId]);
 
@@ -66,21 +50,11 @@ export function MultiplayerTriviaGame({
     const ws = wsRef.current;
     const handleMessage = (event: MessageEvent) => {
       const data = JSON.parse(event.data);
-      console.log("=== MultiplayerTriviaGame received message ===");
-      console.log("Message type:", data.type);
-      console.log("Full message:", data);
 
       if (data.type === "game_state") {
-        console.log("Updating game state:", data.state);
-        console.log("Timer values:", {
-          questionTimeRemaining: data.state.questionTimeRemaining,
-          revealTimeRemaining: data.state.revealTimeRemaining,
-          phase: data.state.phase,
-        });
         setMpState(data.state);
       }
       if (data.type === "game_end") {
-        console.log("Game ended");
         setMpState((prev: any) => ({ ...prev, phase: "final" }));
         setTimeout(() => playSuccess(), 500);
       }
@@ -91,46 +65,23 @@ export function MultiplayerTriviaGame({
 
   // Send answer to server in multiplayer
   const handleAnswer = (answer: string) => {
-    console.log("=== handleAnswer called ===");
-    console.log("Answer:", answer);
-    console.log("wsRef.current:", wsRef?.current);
-    console.log("mpState:", mpState);
-    console.log("playerId prop:", playerId);
-    console.log("resolvedPlayerId:", resolvedPlayerId);
-    console.log(
-      "localStorage playerId:",
-      localStorage.getItem("quizRushPlayerId")
-    );
-    console.log(
-      "hasAnswered:",
-      resolvedPlayerId ? !!mpState.answers?.[resolvedPlayerId] : false
-    );
-    console.log("Current phase:", mpState?.phase);
-    console.log("Is playing phase:", mpState?.phase === "playing");
-    console.log("Current answers:", mpState?.answers);
-
     if (!wsRef?.current) {
-      console.error("WebSocket not connected");
       return;
     }
 
     if (!mpState) {
-      console.error("No game state");
       return;
     }
 
     if (!resolvedPlayerId) {
-      console.error("No player ID resolved");
       return;
     }
 
     if (mpState.phase !== "playing") {
-      console.error("Not in playing phase, current phase:", mpState.phase);
       return;
     }
 
     if (mpState.answers?.[resolvedPlayerId]) {
-      console.error("Player already answered");
       return;
     }
 
@@ -139,11 +90,9 @@ export function MultiplayerTriviaGame({
       answer,
       playerId: resolvedPlayerId,
     };
-    console.log("Sending WebSocket message:", message);
 
     try {
       wsRef.current.send(JSON.stringify(message));
-      console.log("Message sent successfully");
     } catch (error) {
       console.error("Error sending message:", error);
     }

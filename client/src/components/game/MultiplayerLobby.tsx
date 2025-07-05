@@ -15,6 +15,10 @@ import {
   Copy,
   ArrowLeft,
   RefreshCw,
+  Loader2,
+  Sparkles,
+  XCircle,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +40,10 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useWebSocket } from "../../lib/contexts/WebSocketContext";
+import {
+  GeminiService,
+  GeminiQuestionRequest,
+} from "../../lib/services/geminiService";
 
 interface Player {
   id: string;
@@ -97,6 +105,18 @@ export function MultiplayerLobby() {
     category: "all",
     questionCount: 10,
   });
+
+  // AI Question Generation State
+  const [aiCategory, setAiCategory] = useState("General History");
+  const [aiDifficulty, setAiDifficulty] = useState<"easy" | "medium" | "hard">(
+    "medium"
+  );
+  const [aiQuestionCount, setAiQuestionCount] = useState(10);
+  const [aiCustomTopic, setAiCustomTopic] = useState("");
+  const [aiQuestions, setAiQuestions] = useState<any[]>([]);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSuccess, setAiSuccess] = useState(false);
 
   // Initialize WebSocket message handler
   useEffect(() => {
@@ -361,24 +381,20 @@ export function MultiplayerLobby() {
   };
 
   const startGame = () => {
-    console.log("Start game button clicked");
-    console.log("Is host:", isHost);
-    console.log("All players ready:", allPlayersReady);
-    console.log("Players count:", players.length);
-    console.log("WebSocket connected:", isConnected);
-    console.log("WebSocket ref:", wsRef.current);
-
-    if (!isHost) {
-      console.log("Not host, cannot start game");
-      return;
+    if (aiQuestions && aiQuestions.length > 0) {
+      wsRef.current?.send(
+        JSON.stringify({
+          type: "start_game",
+          questions: aiQuestions,
+        })
+      );
+    } else {
+      wsRef.current?.send(
+        JSON.stringify({
+          type: "start_game",
+        })
+      );
     }
-
-    console.log("Sending start_game message");
-    wsRef.current?.send(
-      JSON.stringify({
-        type: "start_game",
-      })
-    );
   };
 
   const sendMessage = () => {
@@ -410,6 +426,31 @@ export function MultiplayerLobby() {
         settings: newSettings,
       })
     );
+  };
+
+  // AI Question Generation Handler
+  const handleGenerateAIQuestions = async () => {
+    setIsGeneratingAI(true);
+    setAiError(null);
+    setAiSuccess(false);
+    try {
+      const request: GeminiQuestionRequest = {
+        category: aiCategory,
+        difficulty: aiDifficulty,
+        count: aiQuestionCount,
+        topic: aiCustomTopic.trim() || undefined,
+      };
+      const questions = await GeminiService.generateQuestions(request);
+      setAiQuestions(questions);
+      setAiSuccess(true);
+    } catch (error) {
+      setAiError(
+        error instanceof Error ? error.message : "Failed to generate questions"
+      );
+      setAiQuestions([]);
+    } finally {
+      setIsGeneratingAI(false);
+    }
   };
 
   if (currentRoom) {
@@ -498,83 +539,174 @@ export function MultiplayerLobby() {
               </CardContent>
             </Card>
 
-            {/* Game Settings */}
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Settings className="w-5 h-5 mr-2" />
-                  Game Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-white text-sm">Difficulty</label>
-                    <Select
-                      value={currentRoom.settings.difficulty}
-                      onValueChange={(value) =>
-                        updateSettings({ difficulty: value })
-                      }
-                      disabled={!isHost}
-                    >
-                      <SelectTrigger className="bg-white/10 border-white/30 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="easy">Easy</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="hard">Hard</SelectItem>
-                      </SelectContent>
-                    </Select>
+            {/* AI Question Generation (All Players See, Only Host Can Edit) */}
+            <div className="space-y-6">
+              <Card className="bg-white/10 backdrop-blur-md border-white/20">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <Sparkles className="w-5 h-5 mr-2 text-purple-400" />
+                    AI-Generated Questions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">
+                        Category
+                      </label>
+                      <Select
+                        value={aiCategory}
+                        onValueChange={isHost ? setAiCategory : undefined}
+                        disabled={!isHost}
+                      >
+                        <SelectTrigger className="bg-white/10 border-white/30 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Ancient History">
+                            🏛️ Ancient History
+                          </SelectItem>
+                          <SelectItem value="Medieval History">
+                            ⚔️ Medieval History
+                          </SelectItem>
+                          <SelectItem value="Modern History">
+                            🏭 Modern History
+                          </SelectItem>
+                          <SelectItem value="World Wars">
+                            🌍 World Wars
+                          </SelectItem>
+                          <SelectItem value="American History">
+                            🇺🇸 American History
+                          </SelectItem>
+                          <SelectItem value="European History">
+                            🇪🇺 European History
+                          </SelectItem>
+                          <SelectItem value="Asian History">
+                            🌏 Asian History
+                          </SelectItem>
+                          <SelectItem value="General History">
+                            📚 General History
+                          </SelectItem>
+                          <SelectItem value="Science">🔬 Science</SelectItem>
+                          <SelectItem value="Geography">
+                            🌍 Geography
+                          </SelectItem>
+                          <SelectItem value="Literature">
+                            📖 Literature
+                          </SelectItem>
+                          <SelectItem value="Sports">⚽ Sports</SelectItem>
+                          <SelectItem value="Entertainment">
+                            🎬 Entertainment
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">
+                        Difficulty
+                      </label>
+                      <Select
+                        value={aiDifficulty}
+                        onValueChange={
+                          isHost
+                            ? (value: "easy" | "medium" | "hard") =>
+                                setAiDifficulty(value)
+                            : undefined
+                        }
+                        disabled={!isHost}
+                      >
+                        <SelectTrigger className="bg-white/10 border-white/30 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="easy">🟢 Easy</SelectItem>
+                          <SelectItem value="medium">🟡 Medium</SelectItem>
+                          <SelectItem value="hard">🔴 Hard</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="text-white text-sm">Category</label>
-                    <Select
-                      value={currentRoom.settings.category}
-                      onValueChange={(value) =>
-                        updateSettings({ category: value })
-                      }
-                      disabled={!isHost}
-                    >
-                      <SelectTrigger className="bg-white/10 border-white/30 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="general">
-                          General Knowledge
-                        </SelectItem>
-                        <SelectItem value="science">Science</SelectItem>
-                        <SelectItem value="history">History</SelectItem>
-                        <SelectItem value="geography">Geography</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">
+                        Number of Questions
+                      </label>
+                      <Select
+                        value={aiQuestionCount.toString()}
+                        onValueChange={
+                          isHost
+                            ? (value) => setAiQuestionCount(parseInt(value))
+                            : undefined
+                        }
+                        disabled={!isHost}
+                      >
+                        <SelectTrigger className="bg-white/10 border-white/30 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5 Questions</SelectItem>
+                          <SelectItem value="10">10 Questions</SelectItem>
+                          <SelectItem value="15">15 Questions</SelectItem>
+                          <SelectItem value="20">20 Questions</SelectItem>
+                          <SelectItem value="25">25 Questions</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-blue-200 mb-2">
+                        Custom Topic (Optional)
+                      </label>
+                      <Input
+                        placeholder="e.g., Ancient Rome, World War II, etc."
+                        value={aiCustomTopic}
+                        onChange={
+                          isHost
+                            ? (e) => setAiCustomTopic(e.target.value)
+                            : undefined
+                        }
+                        className="bg-white/10 border-white/30 text-white placeholder-white/60"
+                        disabled={!isHost}
+                      />
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="text-white text-sm">Questions</label>
-                    <Select
-                      value={currentRoom.settings.questionCount.toString()}
-                      onValueChange={(value) =>
-                        updateSettings({ questionCount: parseInt(value) })
-                      }
-                      disabled={!isHost}
-                    >
-                      <SelectTrigger className="bg-white/10 border-white/30 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5 Questions</SelectItem>
-                        <SelectItem value="10">10 Questions</SelectItem>
-                        <SelectItem value="15">15 Questions</SelectItem>
-                        <SelectItem value="20">20 Questions</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                  <Button
+                    onClick={isHost ? handleGenerateAIQuestions : undefined}
+                    disabled={!isHost || isGeneratingAI}
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3"
+                  >
+                    {isGeneratingAI ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Generating Questions...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Generate Questions with AI
+                      </>
+                    )}
+                  </Button>
+                  {aiError && (
+                    <div className="flex items-center text-red-400 mt-2">
+                      <XCircle className="w-4 h-4 mr-2" />
+                      {aiError}
+                    </div>
+                  )}
+                  {aiSuccess && (
+                    <div className="flex items-center text-green-400 mt-2">
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      AI questions generated and ready!
+                    </div>
+                  )}
+                  {aiQuestions.length > 0 && (
+                    <div className="mt-2 text-blue-200 text-xs">
+                      {aiQuestions.length} questions generated. These will be
+                      used when the game starts.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Chat */}
             <Card className="bg-white/10 backdrop-blur-md border-white/20">
@@ -752,7 +884,6 @@ export function MultiplayerLobby() {
                     className="bg-white/10 border-white/30 text-white placeholder-white/60"
                   />
                 </div>
-
                 <div>
                   <label className="text-white text-sm">Your Name</label>
                   <Input
@@ -762,7 +893,6 @@ export function MultiplayerLobby() {
                     className="bg-white/10 border-white/30 text-white placeholder-white/60"
                   />
                 </div>
-
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -775,7 +905,6 @@ export function MultiplayerLobby() {
                     Private Room
                   </label>
                 </div>
-
                 {isPrivate && (
                   <div>
                     <label className="text-white text-sm">Password</label>
@@ -788,9 +917,8 @@ export function MultiplayerLobby() {
                     />
                   </div>
                 )}
-
                 <Button
-                  onClick={() => setShowCreateRoom(true)}
+                  onClick={createRoom}
                   className="w-full bg-purple-600 hover:bg-purple-700"
                   disabled={!roomName.trim() || !playerName.trim()}
                 >
@@ -813,79 +941,6 @@ export function MultiplayerLobby() {
             Back to Mode Select
           </Button>
         </div>
-
-        {/* Create Room Dialog */}
-        <Dialog open={showCreateRoom} onOpenChange={setShowCreateRoom}>
-          <DialogContent className="bg-white/95">
-            <DialogHeader>
-              <DialogTitle>Create Room</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Game Settings</label>
-                <div className="grid grid-cols-2 gap-4 mt-2">
-                  <div>
-                    <label className="text-xs">Difficulty</label>
-                    <Select
-                      value={roomSettings.difficulty}
-                      onValueChange={(value) =>
-                        setRoomSettings((prev) => ({
-                          ...prev,
-                          difficulty: value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="easy">Easy</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="hard">Hard</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-xs">Category</label>
-                    <Select
-                      value={roomSettings.category}
-                      onValueChange={(value) =>
-                        setRoomSettings((prev) => ({
-                          ...prev,
-                          category: value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="general">
-                          General Knowledge
-                        </SelectItem>
-                        <SelectItem value="science">Science</SelectItem>
-                        <SelectItem value="history">History</SelectItem>
-                        <SelectItem value="geography">Geography</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowCreateRoom(false)}
-                >
-                  Cancel
-                </Button>
-                <Button onClick={createRoom} disabled={isLoading}>
-                  {isLoading ? "Creating..." : "Create Room"}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
 
         {/* Join Room Dialog */}
         <Dialog open={showJoinRoom} onOpenChange={setShowJoinRoom}>
