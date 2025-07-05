@@ -848,6 +848,17 @@ export function MultiplayerLobby() {
             </div>
           )}
         </div>
+        {/* Back Button */}
+        <div className="text-center mt-8">
+          <Button
+            variant="outline"
+            onClick={() => navigate("/mode")}
+            className="bg-white/10 text-white border-white/20"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Mode Select
+          </Button>
+        </div>
       </div>
     );
   }
