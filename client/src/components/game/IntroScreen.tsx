@@ -116,18 +116,6 @@ export function IntroScreen({ onComplete }: IntroScreenProps) {
                 Developed by Rafi Ikhsanul Hakim
               </p>
             </div>
-
-            {/* Multiplayer Disclaimer */}
-            <div className="mb-8 p-4 bg-yellow-500/10 rounded-lg border border-yellow-400/30 backdrop-blur-sm">
-              <p className="text-sm text-yellow-300 font-medium mb-1">
-                ⚠️ Multiplayer Notice
-              </p>
-              <p className="text-xs text-yellow-200">
-                Multiplayer mode is currently in development and may have bugs.
-                For the best experience, try the Local (Party) Mode with
-                AI-generated questions!
-              </p>
-            </div>
           </div>
 
           {/* Feature highlights */}
