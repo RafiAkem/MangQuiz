@@ -323,7 +323,7 @@ export function GameResults() {
               <Button
                 onClick={() => {
                   resetGame();
-                  navigate("/mode/local");
+                  navigate("/lobby");
                 }}
                 className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold py-3 px-6"
               >
@@ -331,7 +331,7 @@ export function GameResults() {
                 Play Again
               </Button>
               <Button
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/mode")}
                 variant="outline"
                 className="bg-white/10 text-white border-white/30 hover:bg-white/20 font-bold py-3 px-6"
               >

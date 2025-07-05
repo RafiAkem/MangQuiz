@@ -24,25 +24,9 @@ function loadStateFromStorage() {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw);
-    console.log("Loaded state from localStorage:", parsed);
-    // Only restore lobby state, not playing state
-    if (parsed.phase === "playing" || parsed.phase === "final") {
-      console.log("Resetting playing/final state to lobby");
-      return {
-        ...parsed,
-        phase: "lobby",
-        questions: [],
-        currentQuestionIndex: 0,
-        timeRemaining: DEFAULT_SETTINGS.gameDuration,
-        questionTimeRemaining: DEFAULT_SETTINGS.questionTime,
-        selectedAnswers: {},
-        showAnswer: false,
-        gameStartTime: 0,
-      };
-    }
+    // Optionally validate structure here
     return parsed;
-  } catch (error) {
-    console.error("Error loading state from localStorage:", error);
+  } catch {
     return undefined;
   }
 }
@@ -59,7 +43,7 @@ interface TriviaGameState extends GameState {
   // Actions
   addPlayer: (name: string) => void;
   removePlayer: (playerId: string) => void;
-  startGame: (settings?: Partial<GameSettings>) => void;
+  startGame: () => void;
   startGameWithQuestions: (customQuestions: Question[]) => void;
   submitAnswer: (playerId: string, answerIndex: number) => void;
   nextQuestion: () => void;
@@ -68,7 +52,6 @@ interface TriviaGameState extends GameState {
   resetGame: () => void;
   updateTimer: () => void;
   updateQuestionTimer: () => void;
-  updateSettings: (newSettings: Partial<GameSettings>) => void;
 }
 
 const initialState = loadStateFromStorage() || {
@@ -108,34 +91,24 @@ export const useTriviaGame = create<TriviaGameState>()(
       });
     },
 
-    startGame: (settings?: Partial<GameSettings>) => {
-      const { settings: currentSettings } = get();
-      console.log(
-        "startGame called with settings:",
-        settings || currentSettings
-      );
-
+    startGame: () => {
+      const { settings } = get();
       const questions = getRandomQuestions(
-        settings?.numberOfQuestions || currentSettings.numberOfQuestions,
-        settings?.categories || currentSettings.categories
+        settings.numberOfQuestions,
+        settings.categories
       );
-
-      console.log("Generated questions:", questions.length);
 
       set({
         phase: "playing",
         questions,
         currentQuestionIndex: 0,
-        timeRemaining: settings?.gameDuration || currentSettings.gameDuration,
-        questionTimeRemaining:
-          settings?.questionTime || currentSettings.questionTime,
+        timeRemaining: settings.gameDuration,
+        questionTimeRemaining: settings.questionTime,
         gameStartTime: Date.now(),
         selectedAnswers: {},
         showAnswer: false,
         players: get().players.map((p) => ({ ...p, score: 0 })),
       });
-
-      console.log("Game state updated to playing phase");
     },
 
     startGameWithQuestions: (customQuestions: Question[]) => {
@@ -246,15 +219,6 @@ export const useTriviaGame = create<TriviaGameState>()(
         get().showQuestionAnswer();
       }
     },
-
-    updateSettings: (newSettings: Partial<GameSettings>) => {
-      set({
-        settings: {
-          ...get().settings,
-          ...newSettings,
-        },
-      });
-    },
   }))
 );
 
@@ -272,7 +236,6 @@ useTriviaGame.subscribe((state) => {
     resetGame,
     updateTimer,
     updateQuestionTimer,
-    updateSettings,
     ...persisted
   } = state;
   saveStateToStorage(persisted);
